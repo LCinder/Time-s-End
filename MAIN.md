@@ -22,6 +22,9 @@ Abre `http://localhost:5173`. Para la versión publicable: `npm run build` (gene
 Ejemplo: `http://localhost:5173/?level=smokestack&beat=204&debug=1` empieza justo antes del túnel.
 
 **Teclas en partida:** `F1` muestra u oculta la depuración · `R` reinicia · `Esc` pausa.
+Con la depuración visible, `[` / `]` (o `-` / `+`) mueven el desfase de audio ±5 ms en caliente; el valor se guarda como la calibración.
+
+**Calibración:** en el título, `↑/↓` elige entre **PLAY** y **CALIBRATE** (ver §10.1). Conviene calibrar una vez en cada ordenador (y cada vez que cambies de altavoces o auriculares, sobre todo si son Bluetooth).
 
 **Canción:** *End of the Line* (hecha con Suno) está en `public/audio/smokestack/song.mp3`. El nivel está sincronizado con ella:
 - mapa de tempo real de ~134 BPM, que acelera a ~137 en el estribillo final;
@@ -192,6 +195,11 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 ### 8.3 Futuro (mezcla)
 - El autor puede aportar imágenes de enemigos. A partir de ellas se generan vistas y poses, y se integran en el rig o como *sprite sheets*.
 - Opcionalmente, fondos generados con IA.
+- **Idea aparcada (dibujos del autor):** el autor dibuja los personajes (PNG transparente, contorno negro grueso, piezas móviles en capas separadas, mirando a la derecha) y el juego los anima:
+  - el cuerpo como `Phaser.GameObjects.Mesh` cuya cuadrícula de vértices pasa por la misma deformación `Ink.warp`, para mantener el cuerpo de goma;
+  - ruedas, bielas, campana, etc. como piezas de un rig con su punto de giro;
+  - la cara, o bien por código encima del dibujo, o bien con piezas dibujadas por el autor (ojos abiertos/cerrados, 4–6 bocas, cejas) sincronizadas con la letra.
+  - Prueba piloto propuesta: el cuerpo de Old Smokestack con la cara vacía.
 
 ---
 
@@ -241,7 +249,12 @@ Nervous lines (optional): 2-3 short lines
 ### 10.1 Reloj de ritmo ("Conductor")
 - La fuente de verdad es el reloj de audio (`AudioContext.currentTime`), nunca el *frame time*.
 - Convierte segundos en beats según el BPM o el mapa de tempos y el `offset` de la canción.
-- Calibración de latencia en el menú de opciones (pulsar al ritmo para medir la latencia de audio y de entrada).
+- **Calibración de latencia** (`CalibrateScene`, opción **CALIBRATE** del título), a 100 BPM con clic de metrónomo:
+  1. **Imagen y sonido:** una pelotita bota en cada clic. Con `←/→` (±5 ms; `Shift` para ±1 ms; `0` vuelve al valor de `game.json`) se retrasa o adelanta la imagen hasta que el bote coincide con el clic. Resultado: `audioOffsetMs`.
+  2. **Teclas:** sin nada en pantalla que marque el ritmo, se pulsa saltar en cada clic (4 de cuenta atrás + 16 pulsaciones). Se descartan las pulsaciones a más de 220 ms de un clic; se toma la mediana y la media de las cercanas (±80 ms). Se mide exactamente igual que el juicio de "a tiempo" de la partida. Resultado: `inputOffsetMs`, con un indicador de regularidad.
+  - `Enter` guarda · `R` repite las pulsaciones · `Retroceso` vuelve al paso 1 · `Esc` sale sin guardar.
+- La calibración se guarda **en el navegador** (`localStorage`, clave `timesend.calibration.v1`) y se **suma** a los valores de `game.json`. Así el JSON sigue siendo la base común y cada ordenador guarda solo su ajuste. El título muestra los valores efectivos.
+- Las pulsaciones de teclado se fechan con la marca de tiempo del propio evento y no con el fotograma en que Phaser las procesa (antes podían llegar hasta 16 ms tarde).
 
 ### 10.2 Editor de ritmo (herramienta interna)
 - Reproduce la canción con metrónomo y una línea de tiempo en beats.
@@ -257,6 +270,7 @@ cartoon-rhythm-game/
   src/
     main.ts                     configuración de Phaser
     core/       Conductor.ts (reloj de ritmo), Input.ts (teclado + mando),
+                Calibration.ts (calibración guardada en el navegador),
                 lyrics.ts, validate.ts (validación de JSON), types.ts, Game.ts
     audio/      AudioEngine.ts (cadena "vintage"), Synth.ts (instrumentos + SFX),
                 Songs.ts (archivo real o banda provisional), chords.ts, Sfx.ts
@@ -265,7 +279,7 @@ cartoon-rhythm-game/
     fx/         FilmPipeline.ts (shader de película), Textures.ts (texturas por código)
     world/      Scenery.ts (fondo que baila), Track.ts (vías y huecos), Solids.ts
     ui/         LyricsUI.ts (pelotita), Hud.ts
-    scenes/     Boot, Error, Splash, Title, TitleCard, Chase
+    scenes/     Boot, Error, Splash, Title, TitleCard, Chase, Calibrate
   public/
     data/config/   game.json, difficulty.json, controls.json
     data/levels/   smokestack.json
@@ -281,8 +295,8 @@ Todo lo que hay en `public/data/` se puede editar con cualquier editor de texto.
 ### 11.1 `config/game.json`: ajustes globales
 | Campo | Qué hace |
 |---|---|
-| `audioOffsetMs` | Compensa el retraso del audio. Si notas que los golpes llegan **antes** que la música, súbelo (prueba con 30, 60…) |
-| `inputOffsetMs` | Compensa el retraso del teclado o el mando al juzgar "a tiempo" |
+| `audioOffsetMs` | Compensa el retraso del audio. Si notas que los golpes llegan **antes** que la música, súbelo (prueba con 30, 60…). Se le suma lo medido en **CALIBRATE** |
+| `inputOffsetMs` | Compensa el retraso del teclado o el mando al juzgar "a tiempo". Se le suma lo medido en **CALIBRATE** |
 | `defaultDifficulty` | `"normal"` o `"hard"` |
 | `masterVolume` / `musicVolume` / `sfxVolume` | De 0 a 1 |
 | `vintageAudio` | `true` añade crepitar de vinilo |
@@ -372,7 +386,7 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 | 1 | Base: Vite + Phaser + TypeScript, Conductor, JSON validado, Tick, shader de película, banda provisional | ✅ |
 | 2 | Nivel **Chase**: Old Smokestack con pelotita, palabras-plataforma, mundo que baila, túnel y gag final | ✅ primera versión, en pulido |
 | 3 | Canción definitiva del autor + sincronización | ✅ *End of the Line* sincronizada; falta el ajuste fino jugando |
-| 4 | Calibración de latencia en el menú y editor de ritmo | ⏳ |
+| 4 | Calibración de latencia en el menú y editor de ritmo | ✅ calibración · ⏳ editor de ritmo |
 | 5 | Reacciones del jefe con voz (burlas y nervios), stems y música adaptativa | ⏳ |
 | 6 | Nivel **Duel**: Madame Gramola (fases = discos), disparo y devolución a tiempo | ⏳ |
 | 7 | Mapa del cine con bobinas y progresión de color | ⏳ |

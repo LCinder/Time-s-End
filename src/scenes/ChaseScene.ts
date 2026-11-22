@@ -108,7 +108,7 @@ export class ChaseScene extends Phaser.Scene {
     const L = this.level;
     const ppb = L.chase.pixelsPerBeat;
     this.conductor = new Conductor(L.song.tempoMap, L.song.beatsPerBar);
-    this.conductor.offsetSec = Game.config.audioOffsetMs / 1000;
+    this.conductor.offsetSec = Game.audioOffsetMs / 1000;
     this.lines = expandLyrics(L.lyrics);
     this.input2 = new Input(this, Game.controls);
 
@@ -167,6 +167,15 @@ export class ChaseScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown-R', () => {
       if (this.state === 'play' || this.state === 'paused') this.restart(false);
+    });
+    // debug: nudge the audio offset live with [ ] (or - +), saved like a calibration
+    this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
+      if (!this.showDebug) return;
+      const d = ev.key === '[' || ev.key === '-' ? -5 : ev.key === ']' || ev.key === '+' ? 5 : 0;
+      if (!d) return;
+      Game.setOffsets(Game.audioOffsetMs + d, Game.inputOffsetMs);
+      this.conductor.offsetSec = Game.audioOffsetMs / 1000;
+      this.toast(`AUDIO OFFSET ${Game.audioOffsetMs > 0 ? '+' : ''}${Game.audioOffsetMs} ms`);
     });
 
     this.events.once('shutdown', () => this.cleanup());
@@ -348,7 +357,7 @@ export class ChaseScene extends Phaser.Scene {
   // ───────────────────────── rhythm ─────────────────────────
 
   private judge(ctxTime: number): { label: 'PERFECT!' | 'GOOD' | ''; ms: number } {
-    const b = this.conductor.beatAtCtxTime(ctxTime, Game.config.inputOffsetMs);
+    const b = this.conductor.beatAtCtxTime(ctxTime, Game.inputOffsetMs);
     const off = Math.abs(b - Math.round(b)) * this.conductor.secondsPerBeat(b) * 1000;
     const w = Game.diff.hitWindowMs;
     if (off <= w.perfect) return { label: 'PERFECT!', ms: off };
@@ -761,6 +770,20 @@ export class ChaseScene extends Phaser.Scene {
     });
   }
 
+  private toastText: Phaser.GameObjects.Text | null = null;
+
+  /** Short message in the corner (debug feedback). */
+  private toast(msg: string): void {
+    if (!this.toastText || !this.toastText.active) {
+      this.toastText = this.add
+        .text(12, 186, '', { fontFamily: 'monospace', fontSize: '20px', color: '#ffffff', backgroundColor: '#000000cc', padding: { x: 8, y: 4 } })
+        .setDepth(201);
+    }
+    this.tweens.killTweensOf(this.toastText);
+    this.toastText.setText(msg).setAlpha(1);
+    this.tweens.add({ targets: this.toastText, alpha: 0, delay: 900, duration: 400 });
+  }
+
   private updateDebug(beat: number): void {
     if (!this.showDebug || !this.debugText) return;
     const bpb = this.level.song.beatsPerBar;
@@ -771,7 +794,8 @@ export class ChaseScene extends Phaser.Scene {
         `fps ${Math.round(this.game.loop.actualFps)}   hits ${this.hits}/${Game.diff.playerHits}   diff ${Game.difficulty}`,
         `player x ${Math.round(this.player.x - this.camX)} (screen)   ground ${this.player.onGround}`,
         `next: ${next.join(', ')}`,
-        `latency ${(AudioEngine.get().outputLatency() * 1000).toFixed(0)}ms  [F1 hide]  [R restart]`,
+        `latency ${(AudioEngine.get().outputLatency() * 1000).toFixed(0)}ms   audio offset ${Game.audioOffsetMs}ms   input offset ${Game.inputOffsetMs}ms`,
+        `[F1 hide]  [R restart]  [ [ / ] or - / + ] audio offset -/+5ms`,
       ].join('\n'),
     );
   }

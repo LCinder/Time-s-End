@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FilmPipeline } from './fx/FilmPipeline';
 import { BootScene } from './scenes/BootScene';
+import { CalibrateScene } from './scenes/CalibrateScene';
 import { ChaseScene } from './scenes/ChaseScene';
 import { ErrorScene } from './scenes/ErrorScene';
 import { SplashScene } from './scenes/SplashScene';
@@ -17,7 +18,7 @@ const game = new Phaser.Game({
   audio: { noAudio: true },
   input: { gamepad: true },
   pipeline: { FilmPipeline } as unknown as Phaser.Types.Core.PipelineConfig,
-  scene: [BootScene, ErrorScene, SplashScene, TitleScene, TitleCardScene, ChaseScene],
+  scene: [BootScene, ErrorScene, SplashScene, TitleScene, TitleCardScene, ChaseScene, CalibrateScene],
 });
 
 // handy for debugging from the console

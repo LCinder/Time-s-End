@@ -40,7 +40,7 @@ export class Input {
           continue;
         }
         const key = kb.addKey(code, true, false);
-        key.on('down', () => this.pressed.set(action, AudioEngine.get().ctx.currentTime));
+        key.on('down', (_k: Phaser.Input.Keyboard.Key, ev?: KeyboardEvent) => this.pressed.set(action, eventCtxTime(ev)));
         list.push(key);
       }
       this.keys.set(action, list);
@@ -84,4 +84,16 @@ export class Input {
   clear(): void {
     this.pressed.clear();
   }
+}
+
+/**
+ * Audio-clock time at which a key event actually happened. Phaser processes DOM
+ * key events at the start of the next frame, so reading ctx.currentTime in the
+ * handler would be up to a frame late; the event's own timestamp fixes that.
+ */
+function eventCtxTime(ev?: KeyboardEvent): number {
+  const now = AudioEngine.get().ctx.currentTime;
+  if (!ev || !ev.timeStamp) return now;
+  const age = (performance.now() - ev.timeStamp) / 1000;
+  return age > 0 && age < 0.25 ? now - age : now;
 }

@@ -1,6 +1,7 @@
 // Loads + validates all JSON data, waits for the fonts and draws the textures.
 
 import Phaser from 'phaser';
+import { loadCalibration } from '../core/Calibration';
 import { Game } from '../core/Game';
 import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel } from '../core/validate';
 import { FilmPipeline } from '../fx/FilmPipeline';
@@ -26,6 +27,7 @@ export class BootScene extends Phaser.Scene {
       Game.difficulties = validateDifficulties(this.cache.json.get('difficulty'));
       Game.controls = validateControls(this.cache.json.get('controls'));
       FilmPipeline.tuning = Game.config.film;
+      Game.calibration = loadCalibration();
 
       const params = new URLSearchParams(window.location.search);
       Game.difficulty = params.get('diff') ?? Game.config.defaultDifficulty;
