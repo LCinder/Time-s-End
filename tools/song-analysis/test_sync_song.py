@@ -60,6 +60,22 @@ class Alignment(unittest.TestCase):
         self.assertEqual(S.repair_squashed(disp, times, vocal_on=[23.5, 23.6]), set())
 
 
+class Draft(unittest.TestCase):
+    def test_draft_breaks_lines_at_pauses_and_sections_at_long_pauses(self):
+        heard = [
+            {"w": "All", "s": 4.3, "e": 4.6, "p": 0.9}, {"w": "aboard!", "s": 5.0, "e": 5.6, "p": 0.9},
+            {"w": "Tickets,", "s": 9.7, "e": 10.1, "p": 0.9}, {"w": "please.", "s": 10.6, "e": 11.0, "p": 0.9},
+            {"w": "Well", "s": 15.4, "e": 15.6, "p": 0.9}, {"w": "howdy", "s": 15.7, "e": 16.0, "p": 0.9},
+        ]
+        text = S.draft_lyrics(heard, "Old Smokestack")
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "lyrics.txt"
+            p.write_text(text, encoding="utf-8")
+            lines = S.parse_lyrics(p)
+        self.assertEqual([l["text"] for l in lines], ["All aboard!", "Tickets, please.", "Well howdy"])
+        self.assertEqual(len({l["section"] for l in lines}), 3)
+
+
 class TempoAndAnchors(unittest.TestCase):
     def test_tempo_map_matches_the_game(self):
         tm = S.TempoMap([{"beat": 0, "bpm": 120}, {"beat": 8, "bpm": 60}], offset_sec=0.5)

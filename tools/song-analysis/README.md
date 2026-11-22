@@ -1,6 +1,39 @@
 # Sincronizar una canción con su nivel
 
-Un solo comando hace todo el trabajo:
+Desde la raíz del proyecto:
+
+```bash
+npm run audio -- madame-gramola
+```
+
+Es el comando completo para cualquier jefe nuevo o existente:
+1. Busca la canción en `public/audio/<jefe>/` (`song.mp3`, o el único archivo de audio de la carpeta: `.mp3`, `.ogg`, `.wav`, `.m4a` o `.flac`).
+2. Si el nivel no existe, **lo crea** en `public/data/levels/<jefe>.json`, con la duración de la canción, y lo añade a `game.json`. Si renombraste el audio, corrige `song.file`.
+3. Busca un Python con librosa y faster-whisper. **La primera vez lo instala solo**, en `tools/song-analysis/.venv`.
+4. Ejecuta `sync_song.py`, explicado abajo. **Si no hay `lyrics.txt`, escribe un borrador** con lo que oye Whisper, para que solo tengas que corregirlo.
+5. Pasa el comprobador de niveles al resultado y te dice cómo probarlo.
+
+`npm run audio` sin nada lista los jefes de `public/audio` y lo que le falta a cada uno.
+
+| Opción (después de `--`) | Para qué |
+|---|---|
+| `--name "Madame Gramola"` | Nombre del jefe en el cartel (niveles nuevos; por defecto sale de la carpeta) |
+| `--title "SPIN ME ROUND"` | Título del corto (niveles nuevos; por defecto, el nombre en mayúsculas) |
+| `--fast` | Whisper escucha una vez en lugar de tres (más rápido, menos fiable) |
+| `--passes 1\|2\|3`, `--bpm`, `--phase-ms`, `--model`, `--no-cache`, `--dry-run` | Se pasan a `sync_song.py` (ver la tabla de abajo) |
+| `--no-check` | No ejecuta el comprobador al final |
+
+**Flujo para un jefe nuevo:**
+1. Crea la carpeta `public/audio/<jefe>/` con la canción y, si la tienes, la letra en `lyrics.txt`.
+2. Ejecuta `npm run audio -- <jefe>`.
+3. Si no había letra, corrige el borrador.
+4. Vuelve a ejecutarlo; tarda segundos gracias a la caché.
+5. Prueba en `http://localhost:5173/?level=<jefe>&debug=1`.
+6. Añade los peligros anclados a palabras.
+
+Tiempos en un portátil normal: la primera vez, entre 2 y 4 minutos (más la instalación); las siguientes, unos 20 segundos.
+
+Por debajo, `npm run audio` llama a `sync_song.py`, que también se puede usar directamente:
 
 ```bash
 python sync_song.py smokestack
@@ -44,8 +77,14 @@ Después, ejecuta `npm run check` para comprobar que el nivel sigue siendo justo
 | `--phase-ms -25` | Corrección de fase fija en vez de la automática |
 | `--model medium.en` | Otro modelo de Whisper (más lento y más preciso) |
 | `--no-cache` | Vuelve a transcribir |
+| `--passes 1` | Whisper escucha una sola vez (más rápido, menos fiable; por defecto 3) |
+| `--length auto` | Ajusta también `song.lengthBeats` al final de la canción (lo usa `npm run audio` en niveles nuevos) |
+
+Si falta `lyrics.txt`, el script escribe un **borrador** a partir de la transcripción: corta las líneas en las pausas y las secciones en las pausas largas. Corrígelo y vuelve a ejecutar.
 
 ## Instalación (una vez)
+
+`npm run audio` lo hace solo. A mano:
 
 ```bash
 python -m venv venv

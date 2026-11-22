@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "tsx scripts/check-levels.ts"
+    "check": "tsx scripts/check-levels.ts",
+    "audio": "tsx scripts/audio.ts"
   },
   "dependencies": {
     "phaser": "3.80.1"

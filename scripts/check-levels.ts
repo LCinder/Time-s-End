@@ -1,6 +1,7 @@
 // `npm run check`: validates every JSON file in public/data and runs the
 // fairness checker on each level. Exits with code 1 if anything is broken.
-//   npm run check -- --quiet    only errors
+//   npm run check -- --quiet         only errors
+//   npm run check -- --level <id>    only that level
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -9,6 +10,8 @@ import { DataError, validateControls, validateDifficulties, validateGameConfig, 
 
 const root = resolve(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');
+const levelArg = process.argv.indexOf('--level');
+const only = levelArg >= 0 ? process.argv[levelArg + 1] : undefined;
 const read = (rel: string): unknown => {
   const file = resolve(root, 'public', rel);
   try {
@@ -26,7 +29,8 @@ try {
   validateControls(read('data/config/controls.json'));
   console.log('config: game.json, difficulty.json, controls.json OK');
 
-  for (const id of game.levels) {
+  if (only && !game.levels.includes(only)) throw new DataError('data/config/game.json', [`level "${only}" is not in "levels"`]);
+  for (const id of game.levels.filter((l) => !only || l === only)) {
     const rel = `data/levels/${id}.json`;
     let level;
     try {

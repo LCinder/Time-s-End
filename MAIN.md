@@ -31,12 +31,13 @@ Con la depuración visible, `[` / `]` (o `-` / `+`) mueven el desfase de audio �
 - cada palabra de la letra en su momento exacto;
 - los peligros recolocados sobre su estructura.
 
-Si el archivo no existe, suena la banda provisional generada por código. La letra está en `public/audio/smokestack/lyrics.txt` y el nivel se resincroniza con **un solo comando**, `python tools/song-analysis/sync_song.py smokestack` (ver [tools/song-analysis](tools/song-analysis/README.md)). El brief original está en [docs/songs/old-smokestack-full-steam-ahead.md](docs/songs/old-smokestack-full-steam-ahead.md).
+Si el archivo no existe, suena la banda provisional generada por código. La letra está en `public/audio/smokestack/lyrics.txt` y el nivel se resincroniza con **un solo comando**, `npm run audio -- smokestack` (ver [tools/song-analysis](tools/song-analysis/README.md)). El brief original está en [docs/songs/old-smokestack-full-steam-ahead.md](docs/songs/old-smokestack-full-steam-ahead.md).
 
 **Comprobaciones** (también se ejecutan en GitHub en cada cambio):
 | Comando | Qué hace |
 |---|---|
-| `npm run check` | Valida todos los JSON y revisa que cada nivel sea justo (ver §11.5) |
+| `npm run audio -- <jefe>` | Mete la canción de un jefe en el juego: crea el nivel si no existe, instala Python la primera vez, escribe un borrador de letra si falta, sincroniza tempo y letra y comprueba el nivel |
+| `npm run check` | Valida todos los JSON y revisa que cada nivel sea justo (ver §11.5). `-- --level <id>` para uno solo |
 | `npm test` | Pruebas automáticas (Conductor, letra, anclajes, validación, comprobador) |
 | `npm run build` | Compila (TypeScript + Vite) |
 
@@ -221,7 +222,7 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 1. **Diseño conjunto:** para cada jefe escribimos un *brief* con el BPM, la estructura por compases y la lista de peligros, y a cada peligro le corresponde una línea de la letra.
 2. **Música provisional:** mientras tanto, el juego usa una pista instrumental generada por código con el **mismo BPM y estructura**, para poder diseñar y probar ya.
 3. **Canción final:** la crea el autor siguiendo el *brief*.
-4. **Sincronización:** se escribe la letra en `lyrics.txt` junto al audio y se ejecuta `sync_song.py <nivel>`. El script calcula el tempo, el beat 0 y el momento de cada palabra, y los escribe en el JSON del nivel. Los peligros **anclados a una palabra** (§11.4) se recolocan solos. El informe marca las palabras dudosas para revisarlas.
+4. **Sincronización:** se deja la canción (y la letra en `lyrics.txt`, si la hay) en `public/audio/<jefe>/` y se ejecuta `npm run audio -- <jefe>`. Si el nivel no existe, se crea; si no hay letra, se escribe un borrador con lo que oye Whisper. El script calcula el tempo, el beat 0 y el momento de cada palabra, y los escribe en el JSON del nivel. Los peligros **anclados a una palabra** (§11.4) se recolocan solos. El informe marca las palabras dudosas para revisarlas.
 5. **Ajuste:** se juega, se revisan los avisos de `npm run check` y se retocan los eventos (más adelante, con el editor de ritmo).
 
 ### 9.3 Requisitos técnicos de la canción entregada
@@ -294,6 +295,7 @@ cartoon-rhythm-game/
     data/config/   game.json, difficulty.json, controls.json
     data/levels/   smokestack.json
     audio/smokestack/   song.mp3 + lyrics.txt (letra para sync_song.py)
+  scripts/audio.ts              npm run audio -- <jefe>
   scripts/check-levels.ts       npm run check
   tests/                        npm test (vitest)
   tools/song-analysis/          sync_song.py (+ sus pruebas)

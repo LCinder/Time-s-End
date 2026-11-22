@@ -22,6 +22,11 @@ Options
     --model NAME     faster-whisper model (default: small.en)
     --dry-run        print the report, write nothing
     --no-cache       transcribe again even if a cached transcription exists
+    --passes 1..3    how many times whisper listens (default 3; 1 is fastest, less reliable)
+    --length auto    also set song.lengthBeats to the end of the song (new levels)
+
+Without a lyrics.txt, a DRAFT is written from the transcription to get you started.
+The usual way to run all this is `npm run audio -- <boss>` (scripts/audio.ts).
 """
 import argparse
 import difflib
@@ -197,6 +202,35 @@ def transcribe(audio_path, y16, model_name, prompt, use_cache):
     CACHE.mkdir(exist_ok=True)
     cache.write_text(json.dumps(words, indent=1), encoding="utf-8")
     return words
+
+
+def draft_lyrics(heard, boss):
+    """A first lyrics.txt from the transcription: a new line at every pause or
+    sentence end, a new section at long pauses."""
+    out = [
+        f"# {boss} — DRAFT written by sync_song.py from what whisper heard.",
+        "# Replace it with the real lyrics (one sung line per line), mark shouted words",
+        "# with ^ and run the command again. Section names are only for the report.",
+        "",
+        "[section 1]",
+    ]
+    line, section, prev_end = [], 1, None
+    for w in heard:
+        gap = w["s"] - prev_end if prev_end is not None else 0
+        if line and (gap > 0.6 or len(line) >= 12):
+            out.append(" ".join(line))
+            line = []
+        if gap > 2.5 and len(out) > 5:
+            section += 1
+            out += ["", f"[section {section}]"]
+        line.append(w["w"])
+        prev_end = w["e"]
+        if w["w"].endswith((".", "!", "?")) and len(line) >= 3:
+            out.append(" ".join(line))
+            line = []
+    if line:
+        out.append(" ".join(line))
+    return "\n".join(out) + "\n"
 
 
 def make_prompts(title, lines):
@@ -381,6 +415,8 @@ def main():
     ap.add_argument("--model", default="small.en")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
+    ap.add_argument("--passes", type=int, default=3, choices=[1, 2, 3])
+    ap.add_argument("--length", choices=["keep", "auto"], default="keep")
     args = ap.parse_args()
 
     level_path = ROOT / "public" / "data" / "levels" / f"{args.level}.json"
@@ -392,15 +428,29 @@ def main():
         sys.exit(f'{level_path.name}: "song.file" is empty, so there is no audio to sync with')
     audio = ROOT / "public" / song_file
     lyrics_path = audio.parent / "lyrics.txt"
-    for p in (audio, lyrics_path):
-        if not p.exists():
-            sys.exit(f"missing file: {p}")
-    lines = parse_lyrics(lyrics_path)
-    print(f"· level {args.level}: {audio.relative_to(ROOT)} + {lyrics_path.relative_to(ROOT)} ({len(lines)} lines)")
+    if not audio.exists():
+        sys.exit(f"missing file: {audio}")
 
     import librosa
 
     y, sr = librosa.load(str(audio), sr=22050, mono=True)
+    y16 = librosa.resample(y, orig_sr=sr, target_sr=16000)
+
+    draft_run = None
+    if not lyrics_path.exists():
+        # no lyrics yet: write a draft from what whisper hears, then carry on with it
+        heard = transcribe(audio, y16, args.model, f"{level.get('title', '')}.", not args.no_cache)
+        if not heard:
+            sys.exit("whisper heard no vocals, so no lyrics draft could be written")
+        if args.dry_run:
+            print("\n(dry run: lyrics.txt is missing; a draft would be written from the transcription)")
+            return
+        draft_run = heard
+        lyrics_path.write_text(draft_lyrics(heard, level.get("subtitle", args.level)), encoding="utf-8", newline="\n")
+        print(f"· lyrics.txt was missing: wrote a DRAFT from the transcription -> {lyrics_path.relative_to(ROOT)}")
+        print("  Fix it (paste the real lyrics, mark ^SHOUTED words) and run the command again.")
+    lines = parse_lyrics(lyrics_path)
+    print(f"· level {args.level}: {audio.relative_to(ROOT)} + {lyrics_path.relative_to(ROOT)} ({len(lines)} lines)")
 
     # 1. beat grid ------------------------------------------------------------
     raw, beats = beat_grid(y, sr, args.bpm)
@@ -413,8 +463,10 @@ def main():
     tmap = TempoMap(tempo, offset_ms / 1000)
 
     # 2. transcription --------------------------------------------------------
-    y16 = librosa.resample(y, orig_sr=sr, target_sr=16000)
-    runs = [transcribe(audio, y16, args.model, pr, not args.no_cache) for pr in make_prompts(title_of(lyrics_path), lines)]
+    prompts = make_prompts(title_of(lyrics_path) or level.get("title", ""), lines)[: args.passes]
+    runs = [transcribe(audio, y16, args.model, pr, not args.no_cache) for pr in prompts]
+    if draft_run is not None:
+        runs.append(draft_run)  # the draft's own transcription is one more vote
 
     # 3. alignment ------------------------------------------------------------
     disp = []  # every written word: (line index, word dict)
@@ -512,10 +564,14 @@ def main():
     print(f"  beat 0 at {offset_ms:.1f} ms  (was {old_song.get('offsetMs')} ms)")
     old_spb = 60 / old_song["tempoMap"][0]["bpm"]
     shift = (offset_ms - float(old_song.get("offsetMs", 0))) / 1000 / old_spb
-    if abs(shift) > 0.5:
+    fixed_events = [e for e in level.get("events", []) if "anchor" not in e]
+    if abs(shift) > 0.5 and fixed_events:
         print(f"  !! beat 0 moved by {shift:+.2f} beats: events with a plain \"beat\" number will be off by about")
         print(f"     {round(shift):+d} beats. Anchored events are fine. Check the start of the level!")
-    if level["song"]["lengthBeats"] > len(beats) + 8:
+    if args.length == "auto":
+        level["song"]["lengthBeats"] = int(len(beats) - 1)
+        print(f"  lengthBeats set to {level['song']['lengthBeats']} (the end of the song)")
+    elif level["song"]["lengthBeats"] > len(beats) + 8:
         print(f"  !! lengthBeats is {level['song']['lengthBeats']} but the song only has ~{len(beats)} beats")
 
     print()

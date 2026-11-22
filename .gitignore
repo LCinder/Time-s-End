@@ -7,3 +7,4 @@ Thumbs.db
 .claude/
 tools/song-analysis/.cache/
 __pycache__/
+tools/song-analysis/.venv/
