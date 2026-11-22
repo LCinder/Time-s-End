@@ -3,6 +3,7 @@
 import Phaser from 'phaser';
 import { loadCalibration } from '../core/Calibration';
 import { Game } from '../core/Game';
+import { checkLevel, formatIssue } from '../core/levelCheck';
 import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel } from '../core/validate';
 import { FilmPipeline } from '../fx/FilmPipeline';
 import { generateTextures } from '../fx/Textures';
@@ -46,6 +47,12 @@ export class BootScene extends Phaser.Scene {
           throw new DataError(file, [`is not valid JSON: ${(err as Error).message}`]);
         }
         Game.levels[id] = validateLevel(raw, file);
+        if (Game.config.debug) {
+          // fairness report (same as `npm run check`) in the browser console
+          const issues = checkLevel(Game.levels[id], Game.difficulties, Game.config.player);
+          if (issues.length) console.warn(`[check] ${file}:\n` + issues.map(formatIssue).join('\n'));
+          else console.info(`[check] ${file}: no problems`);
+        }
       }
     } catch (err) {
       if (err instanceof DataError) {

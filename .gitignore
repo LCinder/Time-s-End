@@ -5,3 +5,5 @@ dist/
 .DS_Store
 Thumbs.db
 .claude/
+tools/song-analysis/.cache/
+__pycache__/

@@ -7,7 +7,9 @@ import type {
   GameConfig,
   LevelData,
   LevelEvent,
+  LyricLine,
 } from './types';
+import { resolveAnchor, songWords } from './anchors';
 import { ERA_PALETTES } from './types';
 
 export class DataError extends Error {
@@ -203,11 +205,32 @@ export function validateLevel(raw: unknown, file: string): LevelData {
     });
 
     const events = c.arr(o, 'events', 'level');
+    const words = Array.isArray(lyrics) && lyrics.every((l) => l && typeof l === 'object' && typeof (l as Obj).text === 'string' && typeof (l as Obj).beat === 'number')
+      ? songWords(lyrics as LyricLine[])
+      : [];
     events?.forEach((e, i) => {
       const p = `level.events[${i}]`;
       const eo = c.obj(e, p);
       if (!eo) return;
-      c.num(eo, 'beat', p);
+      if (eo.anchor !== undefined) {
+        // word-anchored event: the beat comes from the lyrics (see anchors.ts)
+        if (eo.beat !== undefined) c.problems.push(`${p}: has both "beat" and "anchor"; use only one of them`);
+        if (typeof eo.anchor !== 'string') c.problems.push(`${p}.anchor: expected a word from the lyrics, e.g. "BOXCAR" or "TOOT#2"`);
+        c.num(eo, 'afterBeats', p, { optional: true });
+        c.num(eo, 'snap', p, { optional: true, min: 0 });
+        if (typeof eo.anchor === 'string') {
+          const r = resolveAnchor(words, {
+            anchor: eo.anchor,
+            afterBeats: typeof eo.afterBeats === 'number' ? eo.afterBeats : 0,
+            snap: typeof eo.snap === 'number' ? eo.snap : 0,
+          });
+          if ('error' in r) c.problems.push(`${p} (${String(eo.type)}): ${r.error}`);
+          else eo.beat = r.beat;
+        }
+      } else {
+        c.num(eo, 'beat', p);
+        for (const k of ['afterBeats', 'snap']) if (eo[k] !== undefined) c.problems.push(`${p}: "${k}" only works together with "anchor"`);
+      }
       const type = eo.type;
       if (typeof type !== 'string' || !EVENT_SCHEMAS[type]) {
         c.problems.push(`${p}.type: "${String(type)}" is unknown. Valid types: ${Object.keys(EVENT_SCHEMAS).join(', ')}`);
@@ -215,7 +238,7 @@ export function validateLevel(raw: unknown, file: string): LevelData {
       }
       const schema = EVENT_SCHEMAS[type];
       for (const r of schema.required) if (eo[r] === undefined) c.problems.push(`${p} (${type} @ beat ${String(eo.beat)}): missing "${r}". ${schema.help}`);
-      const known = new Set(['type', 'beat', 'only', 'comment', ...schema.required, ...schema.optional]);
+      const known = new Set(['type', 'beat', 'anchor', 'afterBeats', 'snap', 'only', 'comment', ...schema.required, ...schema.optional]);
       for (const k of Object.keys(eo)) if (!known.has(k)) c.problems.push(`${p} (${type}): unknown field "${k}". Allowed: ${[...known].join(', ')}`);
       if (type === 'drop' && !['boxcar', 'anvil', 'piano', 'trunk'].includes(String(eo.object))) {
         c.problems.push(`${p}.object: "${String(eo.object)}" is not valid. Use boxcar, anvil, piano or trunk`);

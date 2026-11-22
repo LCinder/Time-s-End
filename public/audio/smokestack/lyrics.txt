@@ -1,0 +1,58 @@
+# End of the Line — Old Smokestack
+#
+# Lyrics for tools/song-analysis/sync_song.py (one sung line per line).
+#   [section]   starts a section (only used in the report)
+#   ^WORD       a SHOUTED word (bigger on screen, band hit)
+#   word@146.1  pins that word to an exact beat when the transcription misses it
+#   # ...       comment (ignored)
+
+[intro]
+All aboard!
+Tickets, please...
+
+[verse 1]
+Well, howdy there, little ticker, ain't you runnin' kinda slow?
+I'm the meanest hunk of iron on the midnight railroad!
+Got a furnace in my belly and a whistle in my throat,
+So listen close, my little clock, here comes my favorite note... ^TOOT!
+Now wouldn't it be a pity? Wouldn't it be a crime,
+If a ^BOXCAR came a-tumblin' down and flattened you in time?
+And wouldn't it be tragic? Wouldn't it be grim,
+If a pile of burnin' ^COAL came a-hoppin' on your limbs?
+
+[chorus 1]
+It's the end of the line! Chugga chugga choo! Chugga chugga choo!
+The end of the line! I'm comin' for you!
+Tick-tock, little clock, your ticket's overdue,
+It's the end of the line! ^TOOT! ^TOOT! Choo-choo!
+
+[verse 2]
+I've@146.1 flattened forty pocket-watches, sixty cuckoo clocks,
+I ran down a grandfather and I crushed his tick-a-tocks!
+So wouldn't it be dreadful? Wouldn't it be sad,
+If a ^TRUNK fell off the luggage rack? Golly, that'd be bad!
+And wouldn't it be awful? Wouldn't it be cruel,
+If a ^PIANO from the freight car played your funeral, you fool?
+I'll derail your little gears, kid, I'll unwind your spring,
+'Cause a watch ain't worth a nickel when it's lost its ting-a-ling!
+
+[chorus 2]
+It's the end of the line! Chugga chugga choo! Chugga chugga choo!
+The end of the line! I'm comin' for you!
+Tick-tock, little clock, your ticket's overdue,
+It's the end of the line! ^TOOT! ^TOOT! Choo-choo!
+
+[bridge]
+Here comes the tunnel... and it's dark as tar...
+Can't see the tracks, kid... can't see how far...
+But I can hear you tick-tick, tick-tick, tick-tick...
+So run, little ticker, 'cause I'm comin' up ^QUICK!
+
+[final chorus]
+And it's the end of the line! Chugga chugga choo! Chugga chugga choo!
+The end of the line! I'm almost onto you!
+Tick-tock, little clock, your time is... wait... what's ^THAT?!
+The ^BRIDGE is ^OUT?! Oh no, no, no, no... ^KER-RASH!
+
+# [outro]
+# It's the end of the line!   (sung after the crash, under the victory card: not shown)

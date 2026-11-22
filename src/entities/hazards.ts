@@ -45,18 +45,9 @@ function hurtboxScreen(c: ChaseCtx): Box {
 }
 
 /** Spawn beat (when the hazard must exist) for an event. */
-export function spawnBeatOf(e: LevelEvent, diff: DifficultySpec): number {
-  const n = (k: string, d: number): number => (typeof e[k] === 'number' ? (e[k] as number) : d);
-  switch (e.type) {
-    case 'drop': return e.beat - n('telegraphBeats', diff.telegraphBeats);
-    case 'lyricObject': return e.beat - 0.75;
-    case 'groundWave': return e.beat - n('travelBeats', 2) / diff.hazardSpeedMultiplier;
-    case 'coal': return e.beat - 1;
-    case 'smokeRing': return e.beat - n('travelBeats', 2) / diff.hazardSpeedMultiplier;
-    case 'bossLunge': return e.beat - n('telegraphBeats', diff.telegraphBeats);
-    default: return e.beat;
-  }
-}
+import { spawnBeatOf } from '../core/timing';
+
+export { spawnBeatOf };
 
 // ───────────────────────── Falling objects ─────────────────────────
 

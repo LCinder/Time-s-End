@@ -31,7 +31,14 @@ Con la depuración visible, `[` / `]` (o `-` / `+`) mueven el desfase de audio �
 - cada palabra de la letra en su momento exacto;
 - los peligros recolocados sobre su estructura.
 
-Si el archivo no existe, suena la banda provisional generada por código. Los scripts para analizar una canción y regenerar el nivel están en [tools/song-analysis](tools/song-analysis/README.md). El brief original está en [docs/songs/old-smokestack-full-steam-ahead.md](docs/songs/old-smokestack-full-steam-ahead.md).
+Si el archivo no existe, suena la banda provisional generada por código. La letra está en `public/audio/smokestack/lyrics.txt` y el nivel se resincroniza con **un solo comando**, `python tools/song-analysis/sync_song.py smokestack` (ver [tools/song-analysis](tools/song-analysis/README.md)). El brief original está en [docs/songs/old-smokestack-full-steam-ahead.md](docs/songs/old-smokestack-full-steam-ahead.md).
+
+**Comprobaciones** (también se ejecutan en GitHub en cada cambio):
+| Comando | Qué hace |
+|---|---|
+| `npm run check` | Valida todos los JSON y revisa que cada nivel sea justo (ver §11.5) |
+| `npm test` | Pruebas automáticas (Conductor, letra, anclajes, validación, comprobador) |
+| `npm run build` | Compila (TypeScript + Vite) |
 
 ---
 
@@ -214,7 +221,8 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 1. **Diseño conjunto:** para cada jefe escribimos un *brief* con el BPM, la estructura por compases y la lista de peligros, y a cada peligro le corresponde una línea de la letra.
 2. **Música provisional:** mientras tanto, el juego usa una pista instrumental generada por código con el **mismo BPM y estructura**, para poder diseñar y probar ya.
 3. **Canción final:** la crea el autor siguiendo el *brief*.
-4. **Ajuste:** con el editor de ritmo se ajustan el `offset` y los eventos a la grabación final.
+4. **Sincronización:** se escribe la letra en `lyrics.txt` junto al audio y se ejecuta `sync_song.py <nivel>`. El script calcula el tempo, el beat 0 y el momento de cada palabra, y los escribe en el JSON del nivel. Los peligros **anclados a una palabra** (§11.4) se recolocan solos. El informe marca las palabras dudosas para revisarlas.
+5. **Ajuste:** se juega, se revisan los avisos de `npm run check` y se retocan los eventos (más adelante, con el editor de ritmo).
 
 ### 9.3 Requisitos técnicos de la canción entregada
 - **BPM constante** (o un mapa de tempos indicado explícitamente).
@@ -271,7 +279,9 @@ cartoon-rhythm-game/
     main.ts                     configuración de Phaser
     core/       Conductor.ts (reloj de ritmo), Input.ts (teclado + mando),
                 Calibration.ts (calibración guardada en el navegador),
-                lyrics.ts, validate.ts (validación de JSON), types.ts, Game.ts
+                lyrics.ts, anchors.ts (eventos anclados a palabras),
+                timing.ts (cuándo aparece cada peligro), levelCheck.ts (comprobador),
+                validate.ts (validación de JSON), types.ts, Game.ts
     audio/      AudioEngine.ts (cadena "vintage"), Synth.ts (instrumentos + SFX),
                 Songs.ts (archivo real o banda provisional), chords.ts, Sfx.ts
     entities/   Player.ts (Tick), Smokestack.ts (jefe), hazards.ts (peligros)
@@ -283,7 +293,11 @@ cartoon-rhythm-game/
   public/
     data/config/   game.json, difficulty.json, controls.json
     data/levels/   smokestack.json
-    audio/smokestack/song.ogg   (cuando exista)
+    audio/smokestack/   song.mp3 + lyrics.txt (letra para sync_song.py)
+  scripts/check-levels.ts       npm run check
+  tests/                        npm test (vitest)
+  tools/song-analysis/          sync_song.py (+ sus pruebas)
+  .github/workflows/ci.yml      compila, prueba y comprueba en cada push
 ```
 
 ---
@@ -360,6 +374,16 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 
 **Eventos (`events`)**: todos llevan `type` y `beat`. Opcionales en todos: `"only": ["hard"]` (solo aparece en esas dificultades) y `"comment"` (una nota tuya, el juego la ignora).
 
+**Eventos anclados a una palabra.** En lugar de `beat`, un evento puede llevar `anchor` (y entonces no lleva `beat`):
+```json
+{ "type": "drop", "anchor": "BOXCAR", "afterBeats": 4, "snap": 1, "object": "boxcar", "x": "player" }
+```
+- `anchor`: una palabra de la letra, sin importar mayúsculas ni signos. Si se canta varias veces, `#n` indica cuál: `"TOOT#3"` es el tercer TOOT de la canción.
+- `afterBeats`: beats después de la palabra (por defecto 0; puede ser negativo).
+- `snap`: redondea el resultado a esa cuadrícula (`1` = al beat entero más cercano, `0.5` = a la corchea, `0.25` = a la semicorchea). Sin `snap`, cae justo en `palabra + afterBeats`.
+- Así, si se vuelve a sincronizar la canción (o se regenera en Suno), el peligro sigue a su palabra. Conviene anclar todo lo que la letra anuncia y dejar con `beat` fijo lo que va con la música (huecos, ritmos de piedras…).
+- En Smokestack: las ondas del silbato caen 2 beats después de cada TOOT, los objetos que caen 4 beats después de su palabra (BOXCAR, TRUNK, PIANO) y las palabras-plataforma en su propia palabra.
+
 | `type` | Campos | Qué hace |
 |---|---|---|
 | `gap` | `lengthBeats` | Hueco en la vía. Tick llega al borde en `beat` si va a la altura del ancla → **salta en ese beat** |
@@ -374,6 +398,22 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 | `bossFall` | `crashBeat` (por defecto `beat` + 4) | Gag final: el jefe sigue corriendo en el aire sobre el abismo, se da cuenta, dice adiós con la mano y se estrella en `crashBeat` |
 | `shake` | `intensity` (0.01), `durationBeats` (1) | Sacudida de cámara |
 
+### 11.5 Comprobador de niveles (`npm run check`)
+Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la consola del navegador.
+- **Errores** (el nivel está roto):
+  - eventos fuera de la canción;
+  - huecos imposibles de saltar incluso manteniendo →;
+  - anclajes a palabras que no están en la letra.
+- **Avisos** (probablemente injusto o un descuido):
+  - **Aviso previo:** menos de 600 ms entre que aparece un peligro y golpea (vagón, onda, anillo de humo, embestida), en cada dificultad.
+  - **Reacciones solapadas:** dos peligros que piden reaccionar a menos de 300 ms el uno del otro.
+  - **Huecos exigentes:** un salto normal no basta y hay que mantener →. El cálculo usa la física de `game.json` y la velocidad de la cámara.
+  - **Objeto no anunciado:** cae un objeto cuyo nombre no se canta en los 8 beats anteriores.
+  - **Palabra no cantada:** cae una palabra-plataforma que no se canta en los 2 beats de alrededor.
+  - **Fuera del compás:** un peligro que no cae en la cuadrícula de medio beat.
+- Los huecos cruzados sobre palabras-plataforma (el abismo final) no se juzgan como salto normal.
+- Aviso actual de Smokestack: la cuarta piedra "NO!" del abismo (beat 331.75) cae más de 2 beats después del último "no" cantado.
+
 **Banda provisional (`placeholderMusic`)**: `key` (tonalidad, p. ej. `"G"`), `swing` (0.5 = sin swing, 0.62 = swing de jazz) y `sections`: lista de `{ name, bars, chords, intensity (1–3), train (true = percusión de tren), mood ("dark" = apagado) }`. Los acordes van en números romanos (`I`, `ii`, `IV`, `V7`, `vi`, `VI7`, `bVII`…), uno por compás.
 
 ---
@@ -387,6 +427,7 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 | 2 | Nivel **Chase**: Old Smokestack con pelotita, palabras-plataforma, mundo que baila, túnel y gag final | ✅ primera versión, en pulido |
 | 3 | Canción definitiva del autor + sincronización | ✅ *End of the Line* sincronizada; falta el ajuste fino jugando |
 | 4 | Calibración de latencia en el menú y editor de ritmo | ✅ calibración · ⏳ editor de ritmo |
+| 4b | Herramientas: sincronización en un comando, eventos anclados a palabras, comprobador de niveles, pruebas y CI | ✅ |
 | 5 | Reacciones del jefe con voz (burlas y nervios), stems y música adaptativa | ⏳ |
 | 6 | Nivel **Duel**: Madame Gramola (fases = discos), disparo y devolución a tiempo | ⏳ |
 | 7 | Mapa del cine con bobinas y progresión de color | ⏳ |
