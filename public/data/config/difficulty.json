@@ -1,0 +1,22 @@
+{
+  "normal": {
+    "label": "NORMAL",
+    "playerHits": 3,
+    "hitWindowMs": { "perfect": 45, "good": 95 },
+    "onBeatJumpMultiplier": 1.12,
+    "onBeatDashBonusMs": 180,
+    "telegraphBeats": 2,
+    "hazardSpeedMultiplier": 1.0,
+    "bossLungeMultiplier": 1.0
+  },
+  "hard": {
+    "label": "HARD",
+    "playerHits": 2,
+    "hitWindowMs": { "perfect": 35, "good": 70 },
+    "onBeatJumpMultiplier": 1.12,
+    "onBeatDashBonusMs": 120,
+    "telegraphBeats": 1.5,
+    "hazardSpeedMultiplier": 1.2,
+    "bossLungeMultiplier": 1.2
+  }
+}

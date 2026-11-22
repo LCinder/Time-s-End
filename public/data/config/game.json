@@ -1,0 +1,32 @@
+{
+  "audioOffsetMs": 0,
+  "inputOffsetMs": 0,
+  "defaultDifficulty": "normal",
+  "masterVolume": 0.9,
+  "musicVolume": 0.9,
+  "sfxVolume": 0.9,
+  "vintageAudio": true,
+  "debug": false,
+  "levels": ["smokestack"],
+  "film": {
+    "grain": 1.0,
+    "scratches": 1.0,
+    "vignette": 1.0,
+    "weave": 1.0,
+    "flicker": 1.0
+  },
+  "player": {
+    "runSpeed": 320,
+    "acceleration": 3200,
+    "airControl": 0.85,
+    "gravity": 2600,
+    "jumpVelocity": 930,
+    "jumpCutMultiplier": 0.45,
+    "coyoteMs": 90,
+    "jumpBufferMs": 130,
+    "dashSpeed": 900,
+    "dashMs": 170,
+    "dashCooldownMs": 450,
+    "invulnerableMs": 1400
+  }
+}

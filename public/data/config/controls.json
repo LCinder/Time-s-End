@@ -1,0 +1,12 @@
+{
+  "left": ["LEFT", "A"],
+  "right": ["RIGHT", "D"],
+  "up": ["UP", "W"],
+  "down": ["DOWN", "S"],
+  "jump": ["Z", "SPACE", "UP", "W"],
+  "shoot": ["X"],
+  "parry": ["C"],
+  "dash": ["SHIFT"],
+  "pause": ["ESC", "P"],
+  "confirm": ["ENTER", "SPACE", "Z"]
+}
