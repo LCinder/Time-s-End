@@ -12,8 +12,9 @@ import { Input } from '../core/Input';
 import { addFrame, clockText, framesAvailable, newSave, type SaveData } from '../core/Save';
 import { Player } from '../entities/Player';
 import { Smokestack } from '../entities/Smokestack';
+import { ACTS, fillerAct, type ActName } from '../entities/SmokestackActs';
 import { addFilm, type FilmPipeline } from '../fx/FilmPipeline';
-import { drawHub, LENS, MARQUEE, SCREEN, WINDOW } from '../hub/HubArt';
+import { drawHub, drawSeats, LENS, MARQUEE, SCREEN, WINDOW } from '../hub/HubArt';
 import { buildHubMap, FLOOR, HUB_OBJECTS, HUB_SPAWN, LADDER_TOP, RAFTER_END_COL, type HubObject } from '../hub/HubLayout';
 import { HubMusic } from '../hub/HubMusic';
 import { INK, Ink, PAPER } from '../rig/Ink';
@@ -67,6 +68,12 @@ export class BijouScene extends Phaser.Scene {
   private seatTween: { x: number } | null = null;
   private particles: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
   private dustDirty = false;
+  private wasUp = false;
+  private nextSeatAct = 0;
+  private lastSeatAct: ActName | null = null;
+  private seatsRT: Phaser.GameObjects.RenderTexture[] = [];
+  private dustRT: Phaser.GameObjects.RenderTexture[] = [];
+  private dustDrawn = -1;
   private lastSaveAt = 0;
   // what the scene shows, which can lag behind the save during the chapter ending
   private shownFreed = 0;
@@ -114,6 +121,9 @@ export class BijouScene extends Phaser.Scene {
 
     drawHub(this, this.map);
     this.buildWorld();
+    this.seatsRT = drawSeats(this);
+    this.dustRT = DUST_FLOORS.map((f) => this.add.renderTexture(f.c1 * TILE, f.y - 8, (f.c2 - f.c1 + 1) * TILE, 16).setOrigin(0).setDepth(8));
+    this.dustDrawn = -1;
     this.dyn = this.add.graphics().setDepth(25);
     this.ink = new Ink(this.dyn);
     this.ink.amp = 0.8;
@@ -203,7 +213,7 @@ export class BijouScene extends Phaser.Scene {
   // ───────────────────────── frame ─────────────────────────
 
   update(_t: number, delta: number): void {
-    const dt = Math.min(delta / 1000, 1 / 30);
+    const dt = Math.min(delta / 1000, 0.1); // Tick splits long frames into steps
     const time = this.time.now / 1000;
     this.input2.update();
     const beat = this.music?.beat ?? 0;
@@ -219,6 +229,14 @@ export class BijouScene extends Phaser.Scene {
     this.player.draw(dt, time, beat, 0);
     if (this.seated) {
       if (this.seatTween) this.seated.screenX = this.seatTween.x;
+      // in his seat he can't keep still: a little performance every few seconds
+      if (!this.seatTween && !this.seated.performing && time > this.nextSeatAct) {
+        const near = Math.abs(this.player.x - this.seated.screenX) < 260 && Math.abs(this.player.y - FLOOR.lobby) < 20;
+        const act: ActName = near && Math.random() < 0.5 ? 'tipHat' : fillerAct(this.lastSeatAct);
+        this.seated.perform(act, ACTS[act].beats * (60 / 92));
+        this.lastSeatAct = act;
+        this.nextSeatAct = time + 4 + Math.random() * 4;
+      }
       this.seated.lookTarget = { x: this.player.x, y: this.player.y - 60 };
       this.seated.update(dt, time, beat);
     }
@@ -266,6 +284,15 @@ export class BijouScene extends Phaser.Scene {
         sfx('onBeat');
         this.flashHud();
       }
+    }
+    // fell off the rafters before the stairs were opened: say how to get back up
+    if (Math.abs(p.y - FLOOR.rafters) < 4) this.wasUp = true;
+    if (this.wasUp && p.onGround && p.y > FLOOR.booth + 100 && !this.save.flags.stairsOpen && !this.save.flags.hints.includes('fell')) {
+      this.wasUp = false;
+      this.save.flags.hints.push('fell');
+      this.persistNow();
+      this.say([{ text: 'Bump! Down in the auditorium.' }, { text: 'The STAIRS door at the far left of the lobby leads back up to the booth. Give it a kick!' }]);
+      return;
     }
     if (!this.save.flags.rafterLadder && Math.abs(p.y - FLOOR.rafters) < 4 && p.x > RAFTER_END_COL * TILE) {
       this.save.flags.rafterLadder = true;
@@ -550,6 +577,7 @@ export class BijouScene extends Phaser.Scene {
     s.groundY = FLOOR.lobby - 18;
     s.screenX = animate ? SCREEN.x + 120 : seatX;
     s.anger = -0.6;
+    s.villain = false; // he got his ending: a friend now
     this.seated = s;
     if (animate) {
       this.seatTween = { x: s.screenX };
@@ -713,14 +741,21 @@ export class BijouScene extends Phaser.Scene {
     const ch = Game.chapter;
     const threaded = s.flags.threaded.includes(ch.feature);
 
-    // dust on the floors (cleared where Tick has walked)
-    g.fillStyle(0x9a948a, 0.55);
-    DUST_FLOORS.forEach((f, fi) => {
-      for (let c = f.c1; c <= f.c2; c++) {
-        if (s.dust.includes(fi * 100 + c)) continue;
-        for (let i = 0; i < 5; i++) g.fillCircle(c * TILE + ((i * 13 + c * 7) % 38), f.y + 3 - ((i * 5 + c) % 3), 2 + ((i + c) % 2));
-      }
-    });
+    // dust on the floors (cleared where Tick has walked): redrawn only when it changes
+    if (this.dustDrawn !== s.dust.length) {
+      this.dustDrawn = s.dust.length;
+      const dg = this.make.graphics({}, false);
+      DUST_FLOORS.forEach((f, fi) => {
+        dg.clear();
+        dg.fillStyle(0x9a948a, 0.55);
+        for (let c = f.c1; c <= f.c2; c++) {
+          if (s.dust.includes(fi * 100 + c)) continue;
+          for (let i = 0; i < 5; i++) dg.fillCircle((c - f.c1) * TILE + ((i * 13 + c * 7) % 38), 11 - ((i * 5 + c) % 3), 2 + ((i + c) % 2));
+        }
+        this.dustRT[fi].clear().draw(dg, 0, 0);
+      });
+      dg.destroy();
+    }
 
     // window: the season outside
     const season = SEASONS[this.shownFreed % 4];
@@ -796,14 +831,7 @@ export class BijouScene extends Phaser.Scene {
     }
 
     // seats, bouncing on the beat
-    for (let row = 0; row < 2; row++) {
-      for (let c = 0; c < 16; c++) {
-        const x = 1300 + c * 54 + row * 26;
-        const y = FLOOR.lobby - 6 - row * 34 - pulse * 3;
-        k.rrect(x - 20, y - 46, 40, 46, 8, 0x5a2a26, 3);
-        k.rrect(x - 22, y - 16, 44, 16, 4, 0x6b3a32, 3);
-      }
-    }
+    for (const rt of this.seatsRT) rt.setY(1144 - pulse * 3);
     // organ pipes swell on the beat
     for (let i = 0; i < 7; i++) g.fillStyle(0xf4ecc8, 0.15 * pulse).fillRect(2130 + i * 18, 990 - (i % 4) * 26, 14, 20);
 

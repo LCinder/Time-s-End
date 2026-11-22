@@ -235,7 +235,12 @@ En los años 30 no se iba a ver una sola película: la sesión tenía **noticiar
   - *FOLLOW THE BOUNCING BALL* (`singalong-1`): canción original en la que 17 palabras gritadas son las plataformas.
   - *A MEMORY: The Station, 1912* (`memory-1`): Elias pierde el tren de las 11:59, y su billete sin usar queda sobre la mesa de la cabina.
 - **El edificio como nivel:** las vigas del techo, con tablones al ritmo, una viga móvil, sacos de arena y 3 fotogramas. Al llegar al final se suelta la escalera de cuerda, que queda como atajo.
-- **Minijuegos:** palomitas y taquilla (dan 2 fotogramas cada uno) y enhebrar el proyector (el ritual).
+- **Minijuegos de ritmo**, de unos 20 s cada uno:
+  - **Cómo funcionan:** las notas llegan por una tira de película y **cada acierto toca la siguiente nota de una melodía**, así que una buena partida suena bien y un fallo deja un hueco. Hay combo, con un "ding" que sube de tono, y rango S/A/B/C.
+  - **Palomitas** (llamada y respuesta): la máquina toca un ritmo (*LISTEN*) y tú lo repites (*YOUR TURN!*); si fallas, una palomita le da a Tick en la cabeza.
+  - **Taquilla:** sellar tickets con ritmos cada vez más densos.
+  - **Enhebrar el proyector:** es el ritual. Usa el tempo del jefe y hace falta el 70 %.
+  - **Premio:** las palomitas y la taquilla dan 1 fotograma con rango B y 2 con rango A o más.
 - **Fotogramas:** hay 28 y la bobina necesita 12.
 - **Adelantos de capítulos futuros**, que se pueden mirar pero aún no se abren: el cuarto de revelado del sótano (Darkroom), el espejo del vestíbulo (The Echo), la caja de música de objetos perdidos (Miss Pirouette), el reloj de pie (Grandfather Pendulum) y la trampilla del tejado. *El nivel Darkroom llega con el primer cambio de época (capítulo 3).*
 
@@ -279,6 +284,9 @@ En los años 30 no se iba a ver una sola película: la sesión tenía **noticiar
 - El siguiente capítulo del serial empieza con *"Previously…"*.
 
 **Técnica**
+- **Rendimiento:**
+  - El decorado fijo (paredes, muebles, butacas, mapas de los niveles, horizontes) se dibuja una vez y se "hornea" en texturas (`src/fx/bake.ts`). El polvo solo se redibuja cuando cambia, y en los niveles solo se dibuja lo que está en pantalla.
+  - La física de Tick se divide en pasos pequeños cuando el ordenador va lento, así que nunca va a cámara lenta.
 - La partida se guarda en el navegador (`localStorage`, clave `timesend.save.<A|B|C>.v1`), con número de versión para poder migrarla y siempre con try/catch, igual que la calibración.
 - Contiene:
   - el progreso del reloj;
@@ -368,6 +376,16 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
   - Señala al cielo antes de que caiga algo.
   - Dirige la banda con el brazo mientras canta y cierra los dos puños al embestir.
 - Peligros: huecos en la vía, vagón, yunques y piano que caen del cielo, palabras-plataforma, ondas del silbato, carbón vivo que salta en cada beat, anillos de humo, embestidas y el túnel a oscuras.
+- **El viaje** (§8.2b): la persecución pasa por seis escenarios mientras el reloj avanza de la tarde al amanecer:
+
+  | Parte de la canción | Beats | Escenario | Hora |
+  |---|---|---|---|
+  | Intro y estrofa 1 | 0–96 | Campos secos: árboles muertos con cuervos, postes de telégrafo torcidos, un espantapájaros con sonrisa cosida | 16:30 → 18:00 |
+  | Estribillo 1 y solo de silencio | 96–146 | Un pueblo fantasma: casas torcidas con ventanas como ojos enfadados, depósito de agua, semáforo de vía caído, el reloj de la estación parado a las 11:59 | se pone el sol |
+  | Estrofa 2 ("forty pocket-watches, sixty cuckoo clocks") | 146–210 | El cementerio de relojes: relojes de pie como lápidas, cucos muertos en los árboles, montones de relojes aplastados, cruces hechas con agujas | anochece, sale la luna |
+  | Estribillo 2 e interludio | 210–256 | Bosque de pinos a medianoche, la montaña acercándose, ojos entre los arbustos y un búho | medianoche |
+  | Puente: el túnel | 256–292 | **Un túnel de verdad**: portal de piedra, paredes de ladrillo, vigas de madera y faroles apagados; salida por otro portal | (el tiempo pasa a oscuras) |
+  | Estribillo final y abismo | 292–341 | El desfiladero: mesetas, peñascos y buitres | amanece mientras el tren se estrella |
 - Final: un abismo enorme. Las palabras que canta el jefe (BRIDGE, OUT?!, NO!, NO!, NO!, NO!) caen como piedras por las que Tick va saltando. La locomotora sigue corriendo en el aire, se da cuenta, dice adiós con la mano… y ¡KER-RASH! La canción sigue sonando bajo el cartel de victoria.
 
 ---
@@ -379,11 +397,82 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
 - Animación de personajes **"a doses" (12 fps)**, mientras que el juego y la física van a 60 fps.
 - **Line boil:** el trazo tiembla ligeramente cada pocos fotogramas, como un dibujo a mano.
 
+### 8.1b Técnicas de animación de los personajes ✅
+Inspiradas en cómo se animan los dibujos de goma (también en 3D): no se copia ningún personaje, solo las técnicas.
+- **A doses (12 fps):** Tick y los jefes se redibujan 12 veces por segundo, aunque el juego vaya a 60.
+- **Smears:** en los movimientos rápidos, el dibujo se estira durante un fotograma o dos.
+  - En la embestida del tren, el cuerpo se alarga en la dirección del movimiento y deja líneas de velocidad.
+  - Los barridos rápidos del brazo dejan una estela desde donde estaba la mano en el dibujo anterior.
+  - En el dash de Tick, se estira a lo ancho con imágenes residuales.
+- **Poses clave en los acentos:** en cada palabra gritada y en el pico de cada embestida, el jefe salta a una pose exagerada (alto y estrecho, ojos enormes, brazos arriba) y la **mantiene** unos fotogramas sin redibujar, como un "golpe" de dibujo animado. Tick hace un "ta-da!" (alto, brazos arriba) en cada salto PERFECT.
+- **Actuación secundaria** (`src/rig/Acting.ts`), compartida por todos los personajes:
+  - **Parpadeos:** al azar, a veces dobles y **siempre que giran la cabeza**, como hacen los animadores.
+  - **Giro de cabeza en falso 3D:** los rasgos del centro de la cara se desplazan más que los de los bordes y la cara se estrecha hacia el lado del giro, mediante un muelle rápido con un poco de rebote. El jefe canta mirando al público y, cuando calla, gira la cara hacia Tick; en los acentos se vuelve de golpe al público.
+  - **Cabeza:** asiente en cada beat mientras canta, con un cabeceo grande en los acentos. Se ladea con la canción, ladea la cabeza con curiosidad cuando está parado y tiembla si está nervioso.
+  - **Cejas:** saltan arriba en los acentos.
+  - **Miradas:** de vez en cuando echa un vistazo al público.
+  - **En Old Smokestack**, la cara es una "cabeza" propia sobre el frontal de la caldera: gira, se ladea y asiente sin mover la locomotora.
+  - **En Tick:**
+    - al cambiar de dirección se estrecha pasando por una vista de frente en vez de darse la vuelta de golpe;
+    - parado, planta los pies;
+    - al rato, da golpecitos con el pie al ritmo, mira alrededor y ladea la cabeza;
+    - si sigue esperando, se pone las manos en la cintura.
+- **Un repertorio grande y variado** (`src/entities/SmokestackActs.ts`): Old Smokestack tiene 23 actuaciones propias, cada una con poses de brazos, cara, cuerpo y objetos.
+  - **Las actuaciones:**
+
+    | Grupo | Actuaciones |
+    |---|---|
+    | Saludar y presumir | quitarse el sombrero-chimenea, darse palmadas en la caldera, bailar en el sitio, hacer una reverencia |
+    | Gestos con la mano | consultar el horario, retorcerse el bigote, pedir silencio con el dedo, hacer oreja con la mano, llamar a Tick con el dedo, contar con los dedos, frotarse las manos, regañar con el dedo, mirar atrás haciendo visera |
+    | Reacciones | bostezar, mirar dos veces sin creérselo, echar vapor por las orejas, guiñar el ojo, estornudar hollín, encogerse de hombros, llorar con pañuelo (lágrimas de cocodrilo), entrar en pánico |
+    | Amenazar | mirar fijamente a Tick sin parpadear, carcajada malvada con los colmillos fuera |
+
+    Objetos y efectos: pañuelo, horario, lágrimas, vapor por las orejas, nube de hollín, dedos levantados y la chimenea que se levanta como un sombrero.
+  - **Un "director"** en la persecución elige qué hacer:
+    - **actúa la letra:** "howdy" → se quita el sombrero; "forty… sixty…" → cuenta; "wouldn't it be a pity" → llora con pañuelo; "I can hear you" → hace oreja; "what's THAT?!" → mira dos veces; "the BRIDGE is OUT?!" → pánico; "Choo-choo!" → reverencia;
+    - **improvisa** en los compases instrumentales;
+    - **reacciona:** con un combo de 6 mira dos veces y con 12 le sale vapor por las orejas.
+
+    Nunca repite la misma actuación dos veces seguidas, y si hay un peligro en camino, el gesto de avisar (señalar el cielo, el puño de la embestida) tiene prioridad sobre la actuación, aunque la cara siga actuando.
+  - **Sentado en el Bijou**, también hace alguna actuación cada pocos segundos y se quita el sombrero si Tick está cerca.
+- **Un villano turbio, no un abuelo simpático.** En la persecución (`villain = true`) Old Smokestack tiene cara de malo:
+  - **la cara:** placa de la cara sucia con manchas de hollín, ojos hundidos en cuencas oscuras, pupilas pequeñas, párpados siempre a media asta y cejas fruncidas aunque esté tranquilo;
+  - **la boca:** en reposo, una mueca torcida con un colmillo; al sonreír, una sonrisa ancha con colmillos; al reírse, una carcajada con colmillos arriba y abajo;
+  - **las actuaciones son siniestras:**
+    - se quita el sombrero y hace la reverencia entornando los ojos y girando la cara;
+    - se da palmadas lentas en la caldera;
+    - en vez de bailar, se balancea encima de Tick;
+    - el guiño es un golpecito en la nariz ("tú y yo sabemos algo");
+    - llora con el pañuelo y a mitad asoma una sonrisa malvada;
+    - bosteza y termina mirando de reojo;
+  - **las improvisaciones** entre versos son sobre todo mirar fijamente y la carcajada;
+  - **en el túnel**, a oscuras, los ojos se vuelven dos cuencas negras con un punto de luz amarillenta (el filtro de película tiene una tercera luz pequeña sobre sus ojos, `light3`).
+
+  Ya liberado y **sentado en el Bijou** (`villain = false`) vuelve a ser amable: la mueca y la carcajada se convierten en sonrisa y los ojos entornados en ojos cerrados de gusto.
+- **Reacciones de Tick:**
+  - mira hacia atrás mientras el tren coge carrerilla para embestir;
+  - se sobresalta (ojos enormes y brazos arriba) cuando empieza la embestida;
+  - ve estrellitas un momento cuando le dan.
+- **Sincronía labial por fonema** (`src/core/visemes.ts`): cada palabra cantada se convierte en una secuencia de bocas: labios cerrados (M, B, P), dientes sobre el labio (F, V, TH), abierta, ancha (A, I), media (E), redonda (O) y fruncida (U, W, OO). Las vocales duran el doble, y la "e" muda del final se ignora. La boca recorre la secuencia mientras se canta la palabra; al gritar, una "O" enorme.
+
 ### 8.2 Técnica (demo: todo generado por código)
 - **Rig por piezas:** la cabeza, el torso y los guantes son formas vectoriales, y las **extremidades son curvas Bézier gruesas** controladas por código. El estiramiento y aplastamiento van sincronizados al beat.
 - **Shader de película** (post-proceso): grano, rayas verticales, motas de polvo, viñeta, parpadeo de brillo y vaivén de la imagen.
 - **Paletas por época:** `bw1928`, `sepia1930`, `twoStrip1932` y `full1935`, aplicadas por shader (así el mismo arte sirve para todas las épocas).
 - **Fondos:** capas con *parallax*, con textura de acuarela o papel generada por código.
+
+### 8.2b Escenarios: cada jefe es un viaje ✅
+Para que el nivel se sienta como un recorrido y no como un fondo que se repite, el fondo cambia mientras avanza la canción (`src/world/Scenery.ts`, `sceneSets.ts` y `SceneryArt.ts`).
+- **Tono:** el lado oscuro de los dibujos de los años 30. Nada de nubes ni árboles sonrientes: árboles secos, cuervos, un espantapájaros, un pueblo abandonado, relojes muertos, ojos en los arbustos y un hombre en la luna que te vigila con media sonrisa.
+- **Escenarios (`sets`):** cada uno define una capa lejana, una capa media, cosas en el cielo y dos filas de decorado (la del medio y la cercana). Ya existen `dusk`, `town`, `graveyard`, `pines` y `gorge`. Cada jefe nuevo tendrá los suyos (dibujados en `SceneryArt.ts` y declarados en `sceneSets.ts`).
+- **Cómo cambian:**
+  - las capas lejanas se funden de un escenario al siguiente (8 beats; `dissolve: 0` lo hace de golpe, útil si cambia mientras se está dentro del túnel);
+  - el decorado **llega desde la derecha**: cada árbol o casa pertenece al escenario por el que pasa el tren cuando ese objeto llega al centro de la pantalla, así que el pueblo aparece a lo lejos y se va acercando;
+  - todo sigue bailando al ritmo, pero las casas y las piedras se balancean menos que los árboles.
+- **La hora del día:** el nivel marca qué hora es en cada beat y el cielo la sigue: el color del cielo, el resplandor del horizonte al atardecer y al amanecer, el sol que se pone detrás de las colinas, la luna que sale y las estrellas.
+  - De noche la imagen se oscurece (el mismo filtro del túnel, más suave), pero Tick y el faro del tren siguen iluminando, y las colinas lejanas se vuelven siluetas.
+  - De noche los ojos del jefe también brillan.
+- **Túneles de verdad:** si el nivel lo pide (`"tunnel": "brick"`), cada evento `tunnel` se convierte en un túnel con portal de piedra a la entrada, paredes de ladrillo, vigas de madera, faroles colgando que se balancean al ritmo y otro portal a la salida. Tick entra por el portal justo en el beat del evento.
 
 ### 8.3 Futuro (mezcla)
 - El autor puede aportar imágenes de enemigos. A partir de ellas se generan vistas y poses, y se integran en el rig o como *sprite sheets*.
@@ -475,7 +564,9 @@ cartoon-rhythm-game/
     entities/   Player.ts (Tick), Smokestack.ts (jefe), hazards.ts (peligros)
     rig/        Ink.ts (trazo de tinta, extremidades de manguera, line boil)
     fx/         FilmPipeline.ts (shader de película), Textures.ts (texturas por código)
-    world/      Scenery.ts (fondo que baila), Track.ts (vías y huecos), Solids.ts,
+    world/      Scenery.ts (el viaje: escenarios, hora del día, túneles), sceneSets.ts
+                (escenarios y cielo, sin Phaser), SceneryArt.ts (dibujos del decorado),
+                Track.ts (vías y huecos), Solids.ts,
                 TileMap.ts (mapas ASCII de los niveles de plataformas)
     hub/        HubLayout.ts (plano del Bijou y sus objetos), HubArt.ts (dibujo fijo),
                 HubMusic.ts (el órgano que gana instrumentos)
@@ -553,12 +644,24 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
     "gapLeadPx": 40,                    // los huecos empiezan un poco después del ancla
     "autoRun": true                     // Tick corre solo; ←/→ frenan o aceleran
   },
+  "scenery": {                          // opcional: el viaje (§8.2b)
+    "stages": [                         // escenarios, en orden
+      { "beat": 0, "set": "dusk" },
+      { "beat": 96, "set": "town" },
+      { "beat": 274, "set": "gorge", "dissolve": 0 }   // dissolve: beats del fundido (8; 0 = de golpe)
+    ],
+    "hours": [[0, 16.5], [96, 18.0], [256, 24], [341, 30.6]],  // [beat, hora]; después de medianoche se sigue contando: 30 = las 6 de la mañana
+    "tunnel": "brick",                  // los eventos tunnel son túneles de verdad
+    "nightDark": 0.45                   // cuánto se oscurece la imagen de noche (0-0.9)
+  },
   "lyrics": [ ... ],
   "events": [ ... ],
   "placeholderMusic": { ... }
 }
 ```
 *(En el JSON real no se pueden escribir comentarios `//`; aquí solo sirven para explicar.)*
+
+Escenarios disponibles (`set`): `dusk` (campos secos), `town` (pueblo fantasma), `graveyard` (cementerio de relojes), `pines` (bosque y montaña), `gorge` (desfiladero). Sin `scenery`, el nivel usa `dusk` a las cinco de la tarde.
 
 **Letra (`lyrics`)**: una entrada por frase.
 ```json
@@ -589,7 +692,7 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 | `coal` | `count` (3), `spacingBeats` (1), `landX` (1020), `hopPx` (60) | Carbón vivo: la chimenea lo lanza, aterriza en `beat` y luego salta hacia Tick en cada beat |
 | `smokeRing` | `x` (`"player"` o X), `travelBeats` (2) | Anillo de humo lanzado en parábola que aterriza en `beat` |
 | `bossLunge` | `telegraphBeats`, `distance` (230) | El jefe coge carrerilla y **embiste**, con el pico en `beat`. Hay que ir por delante |
-| `tunnel` | `lengthBeats` | Oscuridad: solo se ven Tick y el faro del jefe. La música suena apagada |
+| `tunnel` | `lengthBeats` | Oscuridad: solo se ven Tick y el faro del jefe. La música suena apagada. Con `"scenery": { "tunnel": "brick" }` es además un túnel de verdad, con portales y paredes |
 | `sign` | `text`, `x` (1100) | Cartel de madera en la vía |
 | `bossFall` | `crashBeat` (por defecto `beat` + 4) | Gag final: el jefe sigue corriendo en el aire sobre el abismo, se da cuenta, dice adiós con la mano y se estrella en `crashBeat` |
 | `shake` | `intensity` (0.01), `durationBeats` (1) | Sacudida de cámara |

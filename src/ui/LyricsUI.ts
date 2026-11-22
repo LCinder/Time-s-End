@@ -159,17 +159,17 @@ export class LyricsUI {
   }
 
   /** Current mouth openness for the singer (0..1). */
-  static mouthAt(lines: ExpandedLine[], beat: number): { open: number; shout: boolean; index: number } {
+  static mouthAt(lines: ExpandedLine[], beat: number): { open: number; shout: boolean; index: number; word: string; f: number } {
     for (const l of lines) {
       if (beat < l.beat - 0.1 || beat > l.end + 0.1) continue;
       for (let i = 0; i < l.words.length; i++) {
         const w = l.words[i];
         if (beat >= w.beat && beat <= w.end) {
           const f = (beat - w.beat) / Math.max(0.05, w.end - w.beat);
-          return { open: w.shout ? 1 : 1 - f * 0.7, shout: w.shout, index: i };
+          return { open: w.shout ? 1 : 1 - f * 0.7, shout: w.shout, index: i, word: w.text, f };
         }
       }
     }
-    return { open: 0, shout: false, index: -1 };
+    return { open: 0, shout: false, index: -1, word: '', f: 0 };
   }
 }

@@ -15,6 +15,7 @@ import { expandLyrics, type ExpandedLine } from '../core/lyrics';
 import { addFrame, recordLevel } from '../core/Save';
 import type { PlatformLevel } from '../core/types';
 import { Player } from '../entities/Player';
+import { bake } from '../fx/bake';
 import { addFilm, type FilmPipeline } from '../fx/FilmPipeline';
 import { INK, Ink, PAPER } from '../rig/Ink';
 import { Cards } from '../ui/Cards';
@@ -265,7 +266,7 @@ export class PlatformScene extends Phaser.Scene {
   // ───────────────────────── frame ─────────────────────────
 
   update(_t: number, delta: number): void {
-    const dt = Math.min(delta / 1000, 1 / 30);
+    const dt = Math.min(delta / 1000, 0.1); // Tick splits long frames into steps
     const time = this.time.now / 1000;
     this.input2.update();
     if (this.cards) {
@@ -381,6 +382,7 @@ export class PlatformScene extends Phaser.Scene {
   }
 
   private onJump(): void {
+    if (this.lastJump === 'PERFECT!') this.player.accent();
     if (this.lastJump) {
       sfx('jumpBeat');
       this.judgeText.setText(this.lastJump).setPosition(this.player.x, this.player.y - 130).setAlpha(1).setScale(1.2);
@@ -695,7 +697,11 @@ export class PlatformScene extends Phaser.Scene {
         for (let k = 1; k < 4; k++) ci.line(x0 + k * 25, 0, x0 + k * 25 + (side ? -6 : 6), 720, 3, 0x241a16);
       }
       ci.rrect(-20, -20, 1320, 60, 0, 0x3a2a24, 4);
+      bake(this, cur, { width: 1280, height: 720, depth: 80, scrollFactor: 0 });
     }
+    // static scenery: bake it once (Phaser would re-process every shape each frame)
+    bake(this, far, { width: Math.ceil(span(0.25)), height: 720, depth: 1, scrollFactor: 0.25 });
+    bake(this, near, { width: Math.ceil(span(0.55)), height: 720, depth: 2, scrollFactor: 0.55 });
   }
 
   private drawStatic(): void {
@@ -727,6 +733,7 @@ export class PlatformScene extends Phaser.Scene {
     k.line(e.x, e.y, e.x, e.y - 150, 6, INK);
     k.rrect(e.x - 90, e.y - 200, 180, 56, 8, PAPER, 4);
     this.add.text(e.x, e.y - 172, label, { fontFamily: 'Rye, Georgia, serif', fontSize: '22px', color: '#141414' }).setOrigin(0.5).setDepth(21);
+    bake(this, g, { width: this.map.width, height: this.map.height, depth: 20 });
   }
 
   private plank(k: Ink, r: Rect, alpha: number): void {
@@ -739,9 +746,14 @@ export class PlatformScene extends Phaser.Scene {
     g.clear();
     k.seed = Math.floor(time * 8) % 3;
     const pulse = Math.pow(1 - (beat - Math.floor(beat)), 3);
+    // only what is on screen (plus a margin) is drawn
+    const L0 = this.camX - 160;
+    const R0 = this.camX + 1440;
+    const vis = (x: number, w = 0): boolean => x + w > L0 && x < R0;
 
     // beat planks (flicker in the last half beat before vanishing)
     for (const p of this.planks) {
+      if (!vis(p.solid.x, p.solid.w)) continue;
       const solidNow = p.solid.active;
       const warn = solidNow && !beatPlankSolid(p.group, beat + 0.5);
       if (solidNow) {
@@ -750,12 +762,12 @@ export class PlatformScene extends Phaser.Scene {
         g.lineStyle(2, PAPER, 0.35).strokeRect(p.solid.x, p.solid.y, p.solid.w, p.solid.h);
       }
     }
-    for (const m of this.movers) this.plank(k, m.solid, 1);
+    for (const m of this.movers) if (vis(m.solid.x, m.solid.w)) this.plank(k, m.solid, 1);
 
     // stompers ("1 TON" weights) and sandbags, with their ropes
     for (const s of this.swingers) {
       const r = s.rect;
-      if (r.y < -100) continue;
+      if (r.y < -100 || !vis(r.x, r.w)) continue;
       k.line(s.x, -10, s.x, r.y, 3, INK);
       if (s.kind === 'S') {
         k.poly([{ x: r.x + 10, y: r.y }, { x: r.x + r.w - 10, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }], 0x2a2a2a, 4);
@@ -769,7 +781,7 @@ export class PlatformScene extends Phaser.Scene {
 
     // film frames: bob on the beat
     for (const f of this.frames) {
-      if (f.taken && !f.had) continue;
+      if ((f.taken && !f.had) || !vis(f.x - 20, 40)) continue;
       const y = f.y - pulse * 6;
       const a = f.had ? 0.3 : 1;
       k.rrect(f.x - 16, y - 20, 32, 40, 4, 0x141414, 3, PAPER, a);
@@ -782,6 +794,7 @@ export class PlatformScene extends Phaser.Scene {
 
     // cue marks: a post with the round cue dot of old film reels
     for (const c of this.cues) {
+      if (!vis(c.x - 20, 40)) continue;
       k.line(c.x, c.y, c.x, c.y - 70, 4, INK);
       k.circle(c.x, c.y - 84, 16, c.on ? PAPER : 0x3a3631, 4);
       if (c.on) g.fillStyle(INK, 1).fillCircle(c.x, c.y - 84, 6);
@@ -851,6 +864,7 @@ export class PlatformScene extends Phaser.Scene {
     if (!this.train.active && this.player.x > e.x - 900) this.train.active = true;
     if (this.train.x === 0) this.train.x = e.x - 200;
     if (this.train.active) this.train.x += 110 / 60;
+    if (this.train.x > this.camX + 1500 || this.train.x + 1100 < this.camX - 100) return;
     const k = this.dynInk;
     const baseY = e.y + (this.L.kind === 'memory' ? 0 : 40);
     for (let car = 0; car < 4; car++) {

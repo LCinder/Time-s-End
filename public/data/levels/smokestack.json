@@ -46,6 +46,19 @@
     "gapLeadPx": 40,
     "autoRun": true
   },
+  "scenery": {
+    "comment": "The journey: dry fields in the afternoon, a ghost town at sunset, the clock graveyard as night falls, the pine forest at midnight, the real tunnel, and the gorge at dawn.",
+    "stages": [
+      {"beat": 0, "set": "dusk"},
+      {"beat": 96, "set": "town"},
+      {"beat": 146, "set": "graveyard"},
+      {"beat": 210, "set": "pines"},
+      {"beat": 274, "set": "gorge", "dissolve": 0}
+    ],
+    "hours": [[0, 16.5], [96, 18.0], [146, 19.6], [210, 22.5], [256, 24], [292, 29.4], [321, 30], [341, 30.6]],
+    "tunnel": "brick",
+    "nightDark": 0.45
+  },
   "lyrics": [
     {"beat": 9.1, "text": "All aboard!", "at": [0.0, 1.25]},
     {"beat": 21.05, "text": "Tickets, please...", "at": [0.0, 2.1]},

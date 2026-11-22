@@ -7,6 +7,9 @@
 // stretches like a top hat when it puffs or coughs.
 
 import Phaser from 'phaser';
+import type { Viseme } from '../core/visemes';
+import { Acting, faceWarp } from '../rig/Acting';
+import { ACTS, type ActName, type ActPose } from './SmokestackActs';
 import { INK, Ink, PAPER } from '../rig/Ink';
 
 export type ArmPose = 'idle' | 'point' | 'fist' | 'wave';
@@ -25,8 +28,21 @@ export class Smokestack {
   // ── state driven by the level
   /** 0..1 how open the mouth is (driven by lyrics). */
   mouth = 0;
-  /** Alternates between wide and round mouth shapes per syllable. */
-  mouthWide = false;
+  /** Mouth shape of the sound being sung (lip sync by phoneme, see visemes.ts). */
+  viseme: Viseme = 'rest';
+  /** Accent pose: held for a moment on the big beats (shouted words, lunge peaks). */
+  private accentT = 0;
+  private accentPainted = false;
+  /** 0-1: how much the body is smeared by speed this drawing. */
+  private smear = 0;
+  private prevHand: { x: number; y: number } | null = null;
+  /** Blinks, head turns, nods, tilts, brow raises (rig/Acting.ts). */
+  readonly act = new Acting();
+  private accentNow = false;
+  /** The performance being played from the repertoire (SmokestackActs.ts). */
+  private perf: { name: ActName; start: number; dur: number } | null = null;
+  private pose: ActPose = {};
+  private poseW = 0;
   /** The current syllable is shouted. */
   shouting = false;
   /** -1 calm … 1 furious */
@@ -45,11 +61,14 @@ export class Smokestack {
   groundY = 600;
   tilt = 0;
   fallY = 0;
-  blink = 0;
   /** Screen point the eyes look at (Tick). */
   lookTarget = { x: 800, y: 540 };
   /** Overall drawing scale (1 in the chase; small when he sits in the Bijou). */
   size = 1;
+  /** A shady villain in his film; friendly once he got his ending (the Bijou). */
+  villain = true;
+  /** 0-1 darkness around him (the tunnel): his eyes glow in it. */
+  dark = 0;
 
   // ── internal animation
   private lean = 0;
@@ -81,6 +100,23 @@ export class Smokestack {
   }
 
   /** Big belly laugh (the player got hurt). */
+  /** Start a performance from the repertoire, lasting `durSec` seconds. */
+  perform(name: ActName, durSec: number): void {
+    this.perf = { name, start: this.time, dur: Math.max(0.4, durSec) };
+  }
+
+  get performing(): ActName | null {
+    return this.perf?.name ?? null;
+  }
+
+  /** Snap into a big held pose on an accent of the song (classic cartoon "hit"). */
+  accent(): void {
+    this.accentNow = true;
+    this.accentT = 0.2;
+    this.accentPainted = false;
+    this.drawTimer = 0;
+  }
+
   laugh(): void {
     this.laughT = 0.9;
   }
@@ -100,6 +136,11 @@ export class Smokestack {
     return { x: this.screenX - 60 + this.lean * 20, y: this.groundY - 150 + this.fallY };
   }
 
+  /** Where his eyes are on screen (they glow in the dark). */
+  get eyesPos(): { x: number; y: number } {
+    return { x: this.screenX + (-60 + this.act.turn * 30) * this.size, y: this.groundY - 240 * this.size + this.fallY };
+  }
+
   get noseX(): number {
     return this.screenX + 40;
   }
@@ -114,6 +155,28 @@ export class Smokestack {
 
     // timers
     this.whistleT = Math.max(0, this.whistleT - dt);
+    // the current performance: its pose, faded in and out at the edges
+    this.pose = {};
+    this.poseW = 0;
+    if (this.perf) {
+      const t = (time - this.perf.start) / this.perf.dur;
+      if (t >= 1 || t < 0) this.perf = null;
+      else {
+        this.pose = ACTS[this.perf.name].pose(t, beat);
+        const edge = Math.min(1, t / 0.15, (1 - t) / 0.15);
+        this.poseW = edge * edge * (3 - 2 * edge);
+      }
+    }
+    // acting: sing out to the audience, otherwise keep an eye (and the face) on Tick
+    const singing = this.mouth > 0.15 || this.shouting;
+    const faceX = this.screenX - 60 * this.size;
+    const toTick = Phaser.Math.Clamp((this.lookTarget.x - faceX) / 380, -1, 1) * 0.85;
+    let look = singing ? toTick * 0.25 : toTick;
+    if (this.pose.turn !== undefined) look += (this.pose.turn - look) * this.poseW;
+    this.act.update(dt, beat, { look, singing, accent: this.accentNow, nervous: this.nervous, idle: false });
+    this.accentNow = false;
+    this.accentT = Math.max(0, this.accentT - dt);
+    if (this.accentT === 0) this.accentPainted = false;
     this.coughT = Math.max(0, this.coughT - dt);
     this.laughT = Math.max(0, this.laughT - dt);
 
@@ -134,18 +197,26 @@ export class Smokestack {
     const laughBob = this.laughT > 0 ? Math.sin(time * 45) * 7 * Math.min(1, this.laughT * 2) : 0;
     const shake = this.charge > 0 ? (Math.random() - 0.5) * 8 * this.charge : 0;
     const airborne = this.fallY !== 0;
-    this.gfx.setPosition(this.screenX + shake, this.groundY + (airborne ? 0 : chug + laughBob) + this.fallY);
-    this.gfx.setRotation(this.tilt + (airborne ? 0 : Math.sin(beat * Math.PI) * 0.008));
-    const stretch = 1 + Math.pow(1 - phase, 3) * 0.035;
-    this.gfx.setScale(this.size / Math.sqrt(stretch), this.size * stretch);
+    const pw = this.poseW;
+    this.gfx.setPosition(
+      this.screenX + shake + (this.pose.shimmy ?? 0) * pw * this.size,
+      this.groundY + (airborne ? 0 : chug + laughBob + (this.pose.bob ?? 0) * pw * this.size) + this.fallY,
+    );
+    this.gfx.setRotation(this.tilt + (airborne ? 0 : Math.sin(beat * Math.PI) * 0.008 + (this.pose.tilt ?? 0) * pw));
+    let stretch = 1 + Math.pow(1 - phase, 3) * 0.035;
+    if (this.accentT > 0) stretch *= 1.12; // accent: tall, thin, held
+    // smear: when charging forward fast, the drawing stretches along the motion
+    this.smear = this.fallY !== 0 ? 0 : Phaser.Math.Clamp((dLunge - 250) / 900, 0, 1);
+    const smearX = 1 + this.smear * 0.22;
+    this.gfx.setScale((this.size * smearX) / Math.sqrt(stretch), this.size * stretch * (1 - this.smear * 0.06));
 
-    // hand-drawn redraw on twos (12 fps)
+    // hand-drawn redraw on twos (12 fps); an accent pose is held, not redrawn
     this.drawTimer -= dt;
     if (this.drawTimer > 0) return;
+    if (this.accentT > 0 && this.accentPainted) return;
+    if (this.accentT > 0) this.accentPainted = true;
     this.drawTimer = 1 / 12;
     this.ink.seed = Math.floor(time * 12) % 3;
-    this.blink -= 1 / 12;
-    if (this.blink < -2.5 - Math.random() * 2) this.blink = 0.12;
     this.paint();
   }
 
@@ -159,14 +230,15 @@ export class Smokestack {
     const puff = Math.pow(1 - phase, 3) * 0.12 + this.coughT * 0.9 + this.whistleT * 0.15;
     const wiggle = this.mouth * (this.shouting ? 1.6 : 0.7) + this.laughT * 1.5;
     const lean = this.lean;
+    const hat = (this.pose.hatLift ?? 0) * this.poseW;
     this.ink.warp = (x: number, y: number) => {
       let nx = x;
       let ny = y;
-      // chimney: a top hat that pops up when puffing / coughing
+      // chimney: a top hat that pops up when puffing / coughing, and is tipped by hand
       if (y < -296 && x > -250 && x < -90) {
         const k = Math.min(1, (-296 - y) / 40);
-        ny = -296 + (y + 296) * (1 + puff * k);
-        nx = -170 + (x + 170) * (1 - puff * 0.35 * k);
+        ny = -296 + (y + 296) * (1 + puff * k) - hat * 46 * k;
+        nx = -170 + (x + 170) * (1 - puff * 0.35 * k) + hat * 10 * k;
       }
       // the boiler breathes on the beat (bulges around its centre line)
       if (y < -100 && y > -310 && x < -30) {
@@ -190,6 +262,15 @@ export class Smokestack {
     const beat = this.beat;
     const time = this.time;
     const phase = beat - Math.floor(beat);
+
+    // ── speed lines behind a smeared charge
+    if (this.smear > 0.15) {
+      for (let i = 0; i < 5; i++) {
+        const y = -380 + i * 70 + Math.sin(time * 30 + i) * 6;
+        const len = 120 + this.smear * 160 + (i % 2) * 40;
+        k.line(-640 - len, y, -630, y, 4 + (i % 2) * 2, 0x8a8478);
+      }
+    }
 
     // ── back arm (behind everything)
     this.paintArm(false);
@@ -256,8 +337,9 @@ export class Smokestack {
     k.rrect(-132, -330 - 26 * (wh - 1), 22, 34 * wh, 6, BRASS, 3);
     k.rrect(-136, -334 - 26 * (wh - 1), 30, 8, 3, BRASS, 3);
 
-    // ── front arm
-    this.paintArm(true);
+    // ── front arm (drawn over the face instead when a performance needs the hand up there)
+    const frontOnTop = !!this.pose.front && !this.pose.front.under && this.poseW > 0.3 && this.arm === 'idle' && this.laughT <= 0.05 && this.accentT === 0;
+    if (!frontOnTop) this.paintArm(true);
 
     // ── smokestack (a top hat!) – warp stretches it
     k.poly([{ x: -200, y: -300 }, { x: -140, y: -300 }, { x: -118, y: -420 }, { x: -222, y: -420 }], IRON, 5);
@@ -267,7 +349,11 @@ export class Smokestack {
     // ── smokebox face
     const fx = -60;
     const fy = -210;
-    k.circle(fx, fy, 104, FACE, 5);
+    k.circle(fx, fy, 104, this.villain ? 0xa69e8e : FACE, 5);
+    if (this.villain) {
+      // a grimy face: soot smudges
+      for (const [sx, sy, r] of [[-130, -150, 18], [10, -268, 14], [-20, -128, 11], [-118, -276, 9]] as const) k.ellipse(sx, sy, r * 1.4, r, 0x8a8273, 0);
+    }
     k.circle(fx, fy, 90, null, 3);
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
@@ -288,6 +374,8 @@ export class Smokestack {
       k.line(topX, -110, x + 10 + chatter, -8, 4);
     }
 
+    if (frontOnTop) this.paintArm(true);
+
     // whistle steam on top of everything
     if (this.whistleT > 0) {
       const s = this.whistleT / 0.6;
@@ -300,30 +388,59 @@ export class Smokestack {
   }
 
   private paintFace(fx: number, fy: number, time: number): void {
+    // the face is a head of its own on the boiler front: it turns, tilts and nods
+    const bodyWarp = this.ink.warp;
+    this.ink.warp = faceWarp(this.act, fx, fy, 100, bodyWarp);
+    this.paintFeatures(fx, fy, time);
+    this.ink.warp = bodyWarp;
+  }
+
+  private paintFeatures(fx: number, fy: number, time: number): void {
     const k = this.ink;
-    const red = this.charge > 0.3;
+    const act = this.act;
+    const pose = this.poseW > 0.5 ? this.pose : ({} as ActPose);
+    const red = this.charge > 0.3 || !!pose.red;
     const laughing = this.laughT > 0.05;
     const eyeY = fy - 30 - this.nervous * 4;
 
     // eyes follow Tick
-    const lx = Phaser.Math.Clamp((this.lookTarget.x - (this.screenX + fx)) / 260, -1, 1);
+    const lx = Phaser.Math.Clamp((this.lookTarget.x - (this.screenX + fx)) / 260 + act.turn * 0.5, -1, 1);
     const ly = Phaser.Math.Clamp((this.lookTarget.y - (this.groundY + eyeY)) / 260, -1, 1);
+    const vil = this.villain;
+    // friendly (in the Bijou) the same performances read warm: squints become smiles
+    const eyesMode = !vil && pose.eyes === 'squint' ? 'closed' : pose.eyes;
+    const glow = vil && this.dark > 0.4;
     for (const ex of [fx - 36, fx + 30]) {
-      if (laughing) {
-        // squeezed-shut happy eyes  ^ ^
-        k.hose(ex - 20, eyeY + 8, ex, eyeY - 22, ex + 20, eyeY + 8, 7);
+      const shut = eyesMode === 'closed' || (eyesMode === 'wink' && ex < fx);
+      if ((laughing && !vil) || shut) {
+        // eyes shut: happy ^ ^ when friendly, a smug flat lid when villainous
+        if (vil) k.hose(ex - 20, eyeY - 2, ex, eyeY + 8, ex + 20, eyeY - 2, 7);
+        else k.hose(ex - 20, eyeY + 8, ex, eyeY - 22, ex + 20, eyeY + 8, 7);
         continue;
       }
-      const big = 1 + this.nervous * 0.2 + this.charge * 0.1;
-      k.ellipse(ex, eyeY, 25 * big, 34 * big, red ? 0xe8b0a0 : PAPER, 4);
-      const pupilScale = this.nervous > 0.5 ? 0.6 : 1;
-      k.pieEye(ex + lx * 8, eyeY + ly * 10, 10 * pupilScale, 16 * pupilScale, lx, ly, this.blink > 0, red ? 0xe8b0a0 : PAPER);
+      const big = 1 + this.nervous * 0.2 + this.charge * 0.1 + (this.accentT > 0 ? 0.22 : 0) + act.brow * 0.06 + (eyesMode === 'pop' ? 0.4 : eyesMode === 'wide' ? 0.15 : 0);
+      if (vil) k.ellipse(ex, eyeY + 2, 31 * big, 41 * big, 0x6e685c, 0); // sunken sockets
+      const white = glow ? 0x141414 : red ? 0xe8b0a0 : vil ? 0xe2dccb : PAPER;
+      k.ellipse(ex, eyeY, 25 * big, 34 * big, white, 4);
+      const pupilScale = (this.nervous > 0.5 ? 0.6 : 1) * (vil ? 0.78 : 1) * (eyesMode === 'wide' ? 0.72 : 1);
+      if (glow) {
+        // in the dark: only two burning pinpricks
+        k.ellipse(ex + lx * 8, eyeY + ly * 10, 7 * pupilScale + 2, 11 * pupilScale + 2, 0xfff2b0, 0);
+      } else {
+        k.pieEye(ex + lx * 8, eyeY + ly * 10, 10 * pupilScale, 16 * pupilScale, lx, ly, act.blinking && !laughing, white);
+      }
+      // lids: a heavy squint, or (villain) always half-lidded and watchful
+      if (eyesMode === 'squint' || (vil && laughing)) k.hose(ex - 26 * big, eyeY - 8, ex, eyeY - 18, ex + 26 * big, eyeY - 8, 9, INK);
+      else if (vil && !eyesMode && this.accentT === 0 && !glow) k.hose(ex - 25 * big, eyeY - 15, ex, eyeY - 27 * big, ex + 25 * big, eyeY - 15, 7, INK);
     }
 
     // brows: angry (inner ends down) ↔ worried (inner ends up)
-    const mood = laughing ? 0.2 : Phaser.Math.Clamp(this.anger + this.charge * 0.6 - this.nervous * 1.6, -1, 1);
+    const baseAnger = vil ? Math.max(this.anger, 0.7) : this.anger;
+    let mood = laughing ? (vil ? 0.9 : 0.2) : Phaser.Math.Clamp(baseAnger + this.charge * 0.6 - this.nervous * 1.6, -1, 1);
+    if (pose.mood !== undefined) mood = pose.mood;
+    const raise = Math.max(act.brow, pose.raise ?? 0);
     for (const [ex, side] of [[fx - 36, -1], [fx + 30, 1]] as const) {
-      const by = eyeY - 46 - this.nervous * 10 - (laughing ? 6 : 0);
+      const by = eyeY - 46 - this.nervous * 10 - (laughing ? 6 : 0) - raise * 14;
       const outerX = ex + side * 28;
       const innerX = ex - side * 26;
       k.hose(outerX, by - mood * 8, ex, by - 12, innerX, by + mood * 14, 10);
@@ -339,12 +456,70 @@ export class Smokestack {
     // mouth: wide/round shapes per syllable, huge "O" when shouting, cackle when laughing
     const mo = laughing ? 0.7 + Math.sin(time * 40) * 0.3 : Math.max(this.mouth, 0.08);
     const my = fy + 46;
-    const w = this.shouting ? 30 : this.mouthWide ? 46 : 32;
-    const h = 8 + mo * (this.shouting ? 38 : 26);
-    k.ellipse(fx - 2, my + mo * 10, w, h, 0x2a0a0a, 4);
-    if (mo > 0.3) k.ellipse(fx - 2, my + mo * 10 + h * 0.5, w * 0.55, h * 0.3, 0x9a3a3a, 0);
-    k.rrect(fx - w * 0.7, my - 4, w * 1.4, 8, 2, PAPER, 0);
-    if (this.shouting || laughing) k.rrect(fx - w * 0.6, my + mo * 10 + h - 10, w * 1.2, 7, 2, PAPER, 0);
+    const v: Viseme = laughing || this.shouting ? 'wide' : this.mouth < 0.12 ? 'rest' : this.viseme;
+    // [width, open height, teeth top, teeth bottom] for each mouth shape
+    const shapes: Record<Viseme, [number, number, boolean, boolean]> = {
+      rest: [34, 0, false, false],
+      closed: [36, 0, false, false],
+      teeth: [34, 10, true, false],
+      open: [32, 14, true, false],
+      wide: [46, 28, true, false],
+      mid: [44, 16, true, true],
+      round: [26, 26, false, false],
+      small: [17, 13, false, false],
+    };
+    let [w, oh, tTop, tBot] = shapes[v];
+    if (this.shouting) [w, oh, tTop, tBot] = [32, 40, true, true];
+    let silentFace = this.mouth < 0.15 && !this.shouting && !laughing ? pose.mouth : undefined;
+    if (!vil && (silentFace === 'smirk' || silentFace === 'cackle')) silentFace = 'grin';
+    const fangs = (x1: number, x2: number, y: number, dir: 1 | -1, n: number): void => {
+      const step = (x2 - x1) / n;
+      for (let i = 0; i < n; i++) {
+        const a = x1 + i * step;
+        k.poly([{ x: a, y }, { x: a + step, y }, { x: a + step / 2, y: y + dir * 11 }], PAPER, 2);
+      }
+    };
+    if (vil && (laughing || silentFace === 'cackle')) {
+      // a cackle: mouth thrown open, pointed teeth top and bottom
+      const open = 26 + Math.sin(time * 38) * 6;
+      k.ellipse(fx - 2, my + 14, 42, open, 0x2a0a0a, 4);
+      fangs(fx - 34, fx + 30, my + 14 - open * 0.75, 1, 6);
+      fangs(fx - 26, fx + 22, my + 14 + open * 0.75, -1, 4);
+    } else if (vil && silentFace === 'grin') {
+      // a wicked grin full of pointed teeth
+      k.hose(fx - 46, my - 10, fx - 2, my + 22, fx + 46, my - 10, 9, 0x2a0a0a);
+      k.ellipse(fx - 2, my + 4, 38, 12, 0x2a0a0a, 0);
+      fangs(fx - 34, fx + 30, my - 6, 1, 7);
+    } else if (vil && (silentFace === 'smirk' || (!silentFace && this.mouth < 0.12 && !this.shouting && !laughing))) {
+      // the resting sneer: one corner up, a fang peeking out
+      k.hose(fx - 40, my + 10, fx - 4, my + 6, fx + 40, my - 8, 8, 0x2a0a0a);
+      k.poly([{ x: fx + 18, y: my - 1 }, { x: fx + 28, y: my - 4 }, { x: fx + 24, y: my + 9 }], PAPER, 2);
+    } else if (silentFace === 'grin' || silentFace === 'smirk') {
+      // a cocky grin (or a lopsided smirk), teeth showing
+      const lop = silentFace === 'smirk' ? 10 : 0;
+      k.hose(fx - 44, my - 4 - lop, fx - 2, my + 18, fx + 44, my - 10 + lop * 0.4, 9, 0x2a0a0a);
+      if (silentFace === 'grin') k.rrect(fx - 30, my - 2, 60, 9, 3, PAPER, 0);
+    } else if (silentFace === 'o' || silentFace === 'yawn') {
+      const big = silentFace === 'yawn';
+      k.ellipse(fx - 2, my + (big ? 18 : 8), big ? 34 : 16, big ? 40 : 16, 0x2a0a0a, 4);
+      if (big) k.ellipse(fx - 2, my + 40, 18, 10, 0x9a3a3a, 0);
+    } else if (silentFace === 'wobble') {
+      // trembling lip: a mock sob
+      const pts = [];
+      for (let i = 0; i <= 8; i++) pts.push({ x: fx - 34 + i * 8.5, y: my + 8 + Math.sin(i * 1.7 + time * 30) * 4 });
+      for (let i = 1; i < pts.length; i++) k.line(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y, 5, 0x2a0a0a);
+    } else if (oh === 0) {
+      // lips pressed together (M, B, P) or the resting smirk
+      k.hose(fx - w, my + 2, fx - 2, my + (v === 'closed' ? 6 : 10), fx + w, my + 2, v === 'closed' ? 9 : 6, 0x2a0a0a);
+    } else {
+      const h = 6 + mo * oh;
+      k.ellipse(fx - 2, my + h * 0.4, w, h, 0x2a0a0a, 4);
+      if (h > 14) k.ellipse(fx - 2, my + h * 0.9, w * 0.55, h * 0.3, 0x9a3a3a, 0); // tongue
+      if (tTop) k.rrect(fx - w * 0.7, my - 4, w * 1.4, 8, 2, PAPER, 0);
+      if (tBot || laughing) k.rrect(fx - w * 0.6, my + h * 1.2 - 6, w * 1.2, 7, 2, PAPER, 0);
+      if (v === 'teeth') k.rrect(fx - w * 0.8, my + 6, w * 1.6, 9, 3, 0x6a2a2a, 0); // lower lip under the teeth (F, V)
+      if (v === 'small' || v === 'round') k.ellipse(fx - 2, my + h * 0.4, w + 6, h + 6, null, 5); // pursed lips
+    }
 
     // walrus moustache: flaps with the voice, flies up when shouting
     const wig = Math.sin(time * 9) * 3 * this.mouth + (this.shouting ? -8 : 0);
@@ -367,6 +542,21 @@ export class Smokestack {
     }
     // nose rivet
     k.circle(fx - 2, fy + 2, 12, BOILER_HI, 4);
+
+    // props that live on the face
+    if (pose.tears) {
+      for (const [ex, ph] of [[fx - 36, 0], [fx + 30, 0.5]] as const) {
+        const d = ((time * 1.6 + ph) % 1) * 70;
+        k.poly([{ x: ex, y: eyeY + 20 + d }, { x: ex + 7, y: eyeY + 34 + d }, { x: ex - 7, y: eyeY + 34 + d }], 0xd8ecff, 2);
+      }
+    }
+    if (pose.earSteam) {
+      for (const side of [-1, 1]) {
+        const puff = (time * 3) % 1;
+        k.cloud(fx + side * (112 + puff * 40), fy - 40 - puff * 50, 14 + puff * 14);
+      }
+    }
+    if (pose.soot) k.cloud(fx + 60, fy + 70, 46, 0x2a2a2a);
   }
 
   private wheel(cx: number, cy: number, r: number, spokes = 10): void {
@@ -443,10 +633,54 @@ export class Smokestack {
           fist = true;
       }
     }
+    if (this.accentT > 0 && !laughing) {
+      // accent pose: both arms flung up and out ("ta-da!")
+      hx = front ? -120 : -480;
+      hy = front ? -540 : -500;
+      fist = false;
+    }
+    // a performance from the repertoire (hazard gestures like pointing win over it)
+    const ap = front ? this.pose.front : this.pose.back;
+    let finger = false;
+    let fingers = 0;
+    if (ap && this.poseW > 0 && this.arm === 'idle' && !laughing && this.accentT === 0) {
+      const w = this.poseW;
+      hx += (ap.x - hx) * w;
+      hy += (ap.y - hy) * w;
+      if (w > 0.5) {
+        fist = ap.fist ?? false;
+        finger = !!ap.finger;
+        fingers = ap.fingers ?? 0;
+      }
+    }
     const cx = (shX + hx) / 2 - 40;
     const cy = (shY + hy) / 2 + 30;
+    if (front) {
+      // smear: a fast swing leaves a streak from where the hand was one drawing ago
+      const p = this.prevHand;
+      if (p && Math.hypot(hx - p.x, hy - p.y) > 60) {
+        k.hose(p.x, p.y, (p.x + hx) / 2 + 20, (p.y + hy) / 2 - 20, hx, hy, 22, 0x6a665e);
+      }
+      this.prevHand = { x: hx, y: hy };
+    }
     k.hose(shX, shY, cx, cy, hx, hy, front ? 14 : 12, front ? INK : 0x262626);
     k.glove(hx, hy, front ? 20 : 17, Math.atan2(hy - cy, hx - cx), fist);
+    // raised fingers: one to point, shush or wag; several to count
+    for (let f = 0; f < Math.max(finger ? 1 : 0, fingers); f++) {
+      const a = -Math.PI / 2 + (f - (Math.max(1, fingers) - 1) / 2) * 0.32;
+      k.hose(hx, hy - 6, hx + Math.cos(a) * 14, hy - 6 + Math.sin(a) * 14, hx + Math.cos(a) * 28, hy - 6 + Math.sin(a) * 28, 7, PAPER, 2);
+    }
+    if (front && this.poseW > 0.3) {
+      if (this.pose.hanky) {
+        // a hanky for crocodile tears
+        k.poly([{ x: hx - 8, y: hy - 6 }, { x: hx + 26, y: hy + 4 }, { x: hx + 12, y: hy + 44 }, { x: hx - 14, y: hy + 30 }], PAPER, 3);
+      }
+      if (this.pose.timetable) {
+        // the timetable, held up to read
+        k.rrect(hx - 4, hy - 70, 70, 86, 3, 0xe8e1d0, 3);
+        for (let r = 0; r < 5; r++) k.line(hx + 6, hy - 56 + r * 14, hx + 56, hy - 56 + r * 14, 2, 0x5a5650);
+      }
+    }
   }
 
   destroy(): void {

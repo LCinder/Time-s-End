@@ -13,6 +13,7 @@ import type {
 } from './types';
 import { resolveAnchor, songWords } from './anchors';
 import { ERA_PALETTES } from './types';
+import { SCENE_SETS } from '../world/sceneSets';
 
 export class DataError extends Error {
   constructor(public file: string, public problems: string[]) {
@@ -251,6 +252,40 @@ export function validateLevel(raw: unknown, file: string): LevelData {
       }
       if (eo.only !== undefined && !Array.isArray(eo.only)) c.problems.push(`${p}.only: expected a list like ["hard"]`);
     });
+
+    if (o.scenery !== undefined) {
+      const sc = c.obj(o.scenery, 'level.scenery');
+      if (sc) {
+        const stages = c.arr(sc, 'stages', 'level.scenery');
+        let prev = -Infinity;
+        stages?.forEach((st, i) => {
+          const p = `level.scenery.stages[${i}]`;
+          const so = c.obj(st, p);
+          if (!so) return;
+          c.num(so, 'beat', p, { min: 0 });
+          c.str(so, 'set', p, { oneOf: Object.keys(SCENE_SETS) });
+          c.num(so, 'dissolve', p, { optional: true, min: 0 });
+          if (typeof so.beat === 'number') {
+            if (so.beat < prev) c.problems.push(`${p}.beat: stages must be in order (${so.beat} comes after ${prev})`);
+            prev = so.beat;
+          }
+        });
+        if (stages && stages.length === 0) c.problems.push('level.scenery.stages: needs at least one { "beat": 0, "set": "dusk" }');
+        const hours = c.arr(sc, 'hours', 'level.scenery');
+        let prevBeat = -Infinity;
+        hours?.forEach((hk, i) => {
+          const p = `level.scenery.hours[${i}]`;
+          if (!Array.isArray(hk) || hk.length !== 2 || hk.some((x) => typeof x !== 'number')) {
+            c.problems.push(`${p}: expected [beat, hour], e.g. [96, 18.5] (hours go past 24 after midnight: 30 = 6 am)`);
+            return;
+          }
+          if (hk[0] < prevBeat) c.problems.push(`${p}: the beats must go up (${hk[0]} comes after ${prevBeat})`);
+          prevBeat = hk[0];
+        });
+        c.str(sc, 'tunnel', 'level.scenery', { optional: true, oneOf: ['brick'] });
+        c.num(sc, 'nightDark', 'level.scenery', { optional: true, min: 0, max: 0.9 });
+      }
+    }
 
     const pm = c.obj(o.placeholderMusic, 'level.placeholderMusic');
     if (pm) {

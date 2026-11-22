@@ -1,6 +1,8 @@
 // Shared data types. Everything a designer can tweak lives in /public/data/*.json
 // and is described by these interfaces (see MAIN.md §11).
 
+import type { SceneryConfig } from '../world/sceneSets';
+
 export type EraPalette = 'bw1928' | 'sepia1930' | 'twoStrip1932' | 'full1935';
 export const ERA_PALETTES: EraPalette[] = ['bw1928', 'sepia1930', 'twoStrip1932', 'full1935'];
 
@@ -80,6 +82,8 @@ export interface LevelData {
   lyrics: LyricLine[];
   events: LevelEvent[];
   placeholderMusic: PlaceholderMusic;
+  /** The journey: places along the line and the time of day (see world/sceneSets.ts). */
+  scenery?: SceneryConfig;
 }
 
 export interface DifficultySpec {

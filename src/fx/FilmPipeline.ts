@@ -20,6 +20,7 @@ uniform float uBurn;
 uniform float uDark;
 uniform vec3 uLight1;
 uniform vec3 uLight2;
+uniform vec3 uLight3;
 uniform float uPalette;
 uniform float uRoll;
 uniform float uFlash;
@@ -78,7 +79,8 @@ void main() {
   if (uDark > 0.001) {
     float l1 = 1.0 - smoothstep(uLight1.z * 0.3, uLight1.z, distance(px, uLight1.xy));
     float l2 = 1.0 - smoothstep(uLight2.z * 0.2, uLight2.z, distance(px, uLight2.xy));
-    float light = clamp(max(l1, l2) + 0.05, 0.0, 1.0);
+    float l3 = 1.0 - smoothstep(uLight3.z * 0.35, uLight3.z, distance(px, uLight3.xy));
+    float light = clamp(max(max(l1, l2), l3) + 0.05, 0.0, 1.0);
     // keep the sing-along band and the HUD readable
     float sy = 1.0 - uv.y;
     float ui = clamp(step(0.85, sy) + step(sy, 0.09), 0.0, 1.0);
@@ -158,6 +160,8 @@ export class FilmPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline
   dark = 0;
   light1 = { x: 0, y: 0, r: 1 };
   light2 = { x: 0, y: 0, r: 1 };
+  /** A small extra light (the boss's eyes in the dark). Off-screen by default. */
+  light3 = { x: -9999, y: -9999, r: 1 };
   palette = 0;
   roll = 0;
   flash = 0;
@@ -182,6 +186,7 @@ export class FilmPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline
     const sy = this.renderer.height / 720;
     this.set3f('uLight1', this.light1.x * sx, this.light1.y * sy, this.light1.r * sx);
     this.set3f('uLight2', this.light2.x * sx, this.light2.y * sy, this.light2.r * sx);
+    this.set3f('uLight3', this.light3.x * sx, this.light3.y * sy, this.light3.r * sx);
     this.set1f('uPalette', this.palette);
     this.set1f('uRoll', this.roll);
     this.set1f('uFlash', this.flash);

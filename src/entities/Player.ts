@@ -1,6 +1,7 @@
 // TICK — a pocket watch with legs and a metronome pendulum that always swings on the beat.
 
 import Phaser from 'phaser';
+import { Acting, faceWarp } from '../rig/Acting';
 import { INK, Ink, PAPER } from '../rig/Ink';
 import type { PlayerTuning } from '../core/types';
 import type { SolidWorld } from '../world/Solids';
@@ -47,8 +48,21 @@ export class Player {
   private runPhase = 0;
   private drawTimer = 0;
   private mouthOpen = 0;
-  private blink = 0;
   dead = false;
+  /** Smear drawing at the start of a dash; accent pose on a PERFECT jump. */
+  private smearT = 0;
+  private accentT = 0;
+  /** Blinks, glances, head turns and tilts (rig/Acting.ts). */
+  readonly act = new Acting();
+  private accentNow = false;
+  /** Facing, eased: turning round passes through a front view. */
+  private faceAnim = 1;
+  /** Seconds standing around doing nothing (idle acting starts after a moment). */
+  private idleTime = 0;
+  /** Set by the level: where Tick should look (e.g. back at a charging boss). */
+  lookBias: number | null = null;
+  private startleT = 0;
+  private dizzyT = 0;
   /** Fired when landing (for dust/sfx). */
   onLand?: (hard: boolean) => void;
   onJump?: () => void;
@@ -77,7 +91,15 @@ export class Player {
     return { left: this.x - 14, right: this.x + 14, top: this.y - 88, bottom: this.y - 6 };
   }
 
+  /** Advance by `dt` seconds. Long frames (slow machines) are split into small steps,
+   *  so Tick moves at real speed instead of in slow motion. */
   update(dt: number, c: PlayerControls, env: PlayerEnv): void {
+    const n = Math.min(6, Math.max(1, Math.ceil(dt / (1 / 60) - 0.01)));
+    const sub = dt / n;
+    for (let i = 0; i < n; i++) this.step(sub, i === 0 ? c : { ...c, jumpPressed: false, dashPressed: false }, env);
+  }
+
+  private step(dt: number, c: PlayerControls, env: PlayerEnv): void {
     const T = this.tune;
     const ms = dt * 1000;
     this.coyote -= ms;
@@ -88,9 +110,12 @@ export class Player {
 
     if (c.jumpPressed) this.jumpBuffer = T.jumpBufferMs;
     if (c.dir !== 0) this.facing = c.dir;
+    this.idleTime = this.onGround && c.dir === 0 && Math.abs(this.vx) < 20 && !c.jumpPressed && !c.dashPressed ? this.idleTime + dt : 0;
 
     // dash
     if (c.dashPressed && this.dashCooldown <= 0) {
+      this.smearT = 0.1;
+      this.drawTimer = 0;
       this.dashTime = T.dashMs;
       this.dashCooldown = T.dashCooldownMs;
       this.invulnerable = Math.max(this.invulnerable, T.dashMs + c.dashBonusMs);
@@ -193,9 +218,28 @@ export class Player {
     }
   }
 
+  /** A quick held "ta-da!" pose (called on PERFECT jumps). */
+  /** Jump with fright: eyes pop, arms up. */
+  startle(): void {
+    this.startleT = 0.35;
+    this.drawTimer = 0;
+  }
+
+  /** Stars spinning round his head after a hit. */
+  dizzy(): void {
+    this.dizzyT = 1.4;
+  }
+
+  accent(): void {
+    this.accentNow = true;
+    this.accentT = 0.16;
+    this.drawTimer = 0;
+  }
+
   /** Drive the drawing from recorded positions (the ghost of the previous try). */
   ghostStep(dt: number, x: number, y: number, onGround: boolean, facing: number): void {
     const moved = Math.abs(x - this.x);
+    this.vx = 300; // the ghost replays a run: keep the legs going
     this.x = x;
     this.y = y;
     this.onGround = onGround;
@@ -214,15 +258,29 @@ export class Player {
   /** Redraw at 12 fps ("on twos") for the hand-animated feel; position updates every frame. */
   draw(dt: number, time: number, beat: number, camX: number): void {
     this.gfx.setPosition(this.x - camX, this.y);
-    this.gfx.setScale(this.facing * (2 - this.squash) ** 0.5, this.squash);
+    this.smearT = Math.max(0, this.smearT - dt);
+    this.accentT = Math.max(0, this.accentT - dt);
+    // smear: stretched along the dash for a drawing or two; accent: tall and proud
+    const sx = this.smearT > 0 ? 1.45 : this.accentT > 0 ? 0.86 : 1;
+    const sy = this.smearT > 0 ? 0.8 : this.accentT > 0 ? 1.2 : 1;
+    // turning round: the body narrows through a front view instead of flipping
+    this.faceAnim += (this.facing - this.faceAnim) * Math.min(1, dt * 16);
+    const turning = Math.abs(this.faceAnim) < 0.75;
+    const fx = Math.sign(this.faceAnim || this.facing) * Math.max(0.35, Math.abs(this.faceAnim));
+    this.gfx.setScale(fx * (2 - this.squash) ** 0.5 * sx, this.squash * sy);
+    const idle = this.idleTime > 1.2 && !this.dead;
+    this.startleT = Math.max(0, this.startleT - dt);
+    this.dizzyT = Math.max(0, this.dizzyT - dt);
+    const look = this.lookBias ?? (turning ? 0 : this.onGround ? 0.6 : 0.4);
+    this.act.update(dt, beat, { look, singing: false, accent: this.accentNow, nervous: this.startleT > 0 ? 1 : 0, idle });
+    this.accentNow = false;
+    this.gfx.setRotation(idle || this.accentT > 0 ? this.act.tilt * 0.8 : 0);
     const flashing = this.invulnerable > 0 && Math.floor(time * 12) % 2 === 0;
     this.gfx.setAlpha(this.dead ? 1 : flashing ? 0.35 : 1);
     this.drawTimer -= dt;
     if (this.drawTimer > 0) return;
     this.drawTimer = 1 / 12;
     this.ink.seed = Math.floor(time * 12) % 3;
-    this.blink -= 1 / 12;
-    if (this.blink < -3 + Math.random()) this.blink = 0.15;
     this.paint(beat, time);
   }
 
@@ -248,6 +306,11 @@ export class Player {
       } else if (air) {
         fx = side * 10 + (dashing ? -18 : 6);
         fy = this.vy < 0 ? -22 : -12;
+      } else if (Math.abs(this.vx) < 20) {
+        // standing: feet planted; when idle, one foot taps on every beat
+        fx = side * 12;
+        const bph = beat - Math.floor(beat);
+        fy = this.idleTime > 1.2 && side > 0 ? -Math.pow(1 - bph, 4) * 10 : 0;
       } else {
         const p = ph + (side > 0 ? Math.PI : 0);
         fx = Math.sin(p) * 20;
@@ -272,12 +335,19 @@ export class Player {
       if (this.dead) {
         hx = side * 40;
         hy = bodyY - 30;
+      } else if (this.accentT > 0 || this.startleT > 0) {
+        hx = side * (this.startleT > 0 ? 44 : 40);
+        hy = bodyY - (this.startleT > 0 ? 54 : 46); // arms up: ta-da! (or yikes!)
       } else if (dashing) {
         hx = sx - 26;
         hy = sy + 8;
       } else if (air) {
         hx = side * 34 + 4;
         hy = bodyY - 40;
+      } else if (Math.abs(this.vx) < 20) {
+        const hips = this.idleTime > 4;
+        hx = hips ? side * 34 : sx + side * 4;
+        hy = hips ? bodyY + 12 : sy + 24;
       } else {
         const p = ph + (side > 0 ? 0 : Math.PI);
         hx = sx + Math.sin(p) * 18;
@@ -291,6 +361,13 @@ export class Player {
       k.hose(a.sx, a.sy, cx, cy, a.hx, a.hy, 6);
       k.glove(a.hx, a.hy, 8, Math.atan2(a.hy - cy, a.hx - cx));
     };
+
+    // smear: speed lines and afterimages trailing a dash
+    if (this.smearT > 0 || (dashing && this.dashTime > 60)) {
+      for (let i = 0; i < 3; i++) k.line(-46 - i * 6, bodyY - 20 + i * 18, -96 - i * 14, bodyY - 20 + i * 18, 3, 0x8a8478);
+      g.fillStyle(CASE, 0.25).fillCircle(-30, bodyY, 30);
+      g.fillStyle(CASE, 0.12).fillCircle(-58, bodyY, 28);
+    }
 
     drawArm(arms[0]);
     drawLeg(legs[0]);
@@ -317,8 +394,9 @@ export class Player {
       g.fillCircle(Math.cos(a) * 21, bodyY + Math.sin(a) * 21, r);
     }
 
-    // face
-    const lookX = this.dead ? 0 : 0.6;
+    // face: features turn and nod with the head (fake 3D on the dial)
+    k.warp = faceWarp(this.act, 0, bodyY, 26, null);
+    const lookX = this.dead ? 0 : Phaser.Math.Clamp(this.act.turn, -1, 1);
     const eyeY = bodyY - 7;
     if (this.dead) {
       for (const ex of [-8, 8]) {
@@ -326,8 +404,9 @@ export class Player {
         k.line(ex + 4, eyeY - 4, ex - 4, eyeY + 4, 3);
       }
     } else {
-      k.pieEye(-7, eyeY, 4.5, 7.5, lookX, air ? -0.5 : 0, this.blink > 0);
-      k.pieEye(8, eyeY, 4.5, 7.5, lookX, air ? -0.5 : 0, this.blink > 0);
+      const pop = this.startleT > 0 ? 1.35 : 1;
+      k.pieEye(-7, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, this.act.blinking && pop === 1);
+      k.pieEye(8, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, this.act.blinking && pop === 1);
     }
     // clock hands as a little moustache that spins with time
     const minute = time * 1.2;
@@ -343,6 +422,18 @@ export class Player {
       g.beginPath();
       g.arc(3, bodyY + 10, 7, 0.4, Math.PI - 0.4);
       g.strokePath();
+    }
+
+    k.warp = null;
+
+    // dizzy: little stars circling his head
+    if (this.dizzyT > 0) {
+      for (let i = 0; i < 3; i++) {
+        const a = time * 6 + (i / 3) * Math.PI * 2;
+        const sx = Math.cos(a) * 30;
+        const sy = bodyY - 52 + Math.sin(a) * 8;
+        for (const r of [0, Math.PI / 2]) k.line(sx - Math.cos(r) * 6, sy - Math.sin(r) * 6, sx + Math.cos(r) * 6, sy + Math.sin(r) * 6, 3, BRASS);
+      }
     }
 
     drawLeg(legs[1]);

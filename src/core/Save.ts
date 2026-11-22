@@ -34,6 +34,8 @@ export interface SaveData {
     ritualSeen: boolean;
     endingsSeen: string[];
     minigames: Record<string, number>;
+    /** One-off hints already shown. */
+    hints: string[];
   };
   /** Cleared dust cells in the Bijou. */
   dust: number[];
@@ -75,6 +77,7 @@ export function newSave(slot: SlotId): SaveData {
       ritualSeen: false,
       endingsSeen: [],
       minigames: {},
+      hints: [],
     },
     dust: [],
     hub: { x: 300, y: 640 },

@@ -3,7 +3,7 @@
 // Re-drawing with a new seed every few frames makes lines shimmer like a
 // 1930s hand-inked cel.
 
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 
 export const INK = 0x141414;
 export const PAPER = 0xf4efe4;

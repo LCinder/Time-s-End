@@ -1,8 +1,9 @@
-// Procedurally drawn textures. Each one is generated in 3 "boil" variants
+// Procedurally drawn textures (the chase scenery lives in world/SceneryArt.ts). Each one is generated in 3 "boil" variants
 // (same drawing, different wobble seed) that sprites cycle through at 8 fps.
 
 import Phaser from 'phaser';
 import { INK, Ink, PAPER } from '../rig/Ink';
+import { SCENERY_DEFS } from '../world/SceneryArt';
 
 export const BOIL_VARIANTS = 3;
 
@@ -20,10 +21,6 @@ const DEFS: Record<string, { w: number; h: number; paint: Painter }> = {
   wave: { w: 90, h: 120, paint: paintWave },
   star: { w: 44, h: 44, paint: paintStar },
   ball: { w: 40, h: 40, paint: (k) => { k.circle(20, 20, 14, PAPER, 4); k.g.fillStyle(0xffffff, 1); k.g.fillCircle(15, 15, 4); } },
-  tree: { w: 170, h: 290, paint: paintTree },
-  pole: { w: 70, h: 320, paint: paintPole },
-  bush: { w: 150, h: 76, paint: (k, w, h) => cloudBlob(k, w / 2, h - 30, [[-42, 6, 24], [-12, -6, 30], [22, -2, 28], [48, 8, 20]], 0x5d6e4e) },
-  cloud: { w: 250, h: 130, paint: paintCloud },
   hills: { w: 1280, h: 220, paint: paintHills },
   farhills: { w: 1280, h: 260, paint: paintFarHills },
   sign: { w: 280, h: 230, paint: paintSign },
@@ -44,13 +41,13 @@ const DEFS: Record<string, { w: number; h: number; paint: Painter }> = {
 export function generateTextures(scene: Phaser.Scene): void {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
   const ink = new Ink(g);
-  for (const [name, def] of Object.entries(DEFS)) {
+  for (const [name, def] of [...Object.entries(DEFS), ...Object.entries(SCENERY_DEFS)]) {
     for (let v = 0; v < BOIL_VARIANTS; v++) {
       const key = `${name}_${v}`;
       if (scene.textures.exists(key)) continue;
       g.clear();
       ink.seed = v * 13.7 + name.length;
-      ink.amp = name === 'hills' || name === 'farhills' ? 1.5 : 1.1;
+      ink.amp = def.w >= 1000 ? 1.5 : 1.1;
       def.paint(ink, def.w, def.h);
       g.generateTexture(key, def.w, def.h);
     }
@@ -200,41 +197,8 @@ function paintBurst(k: Ink, w: number, h: number): void {
   k.poly(pts, PAPER, 4);
 }
 
-function paintTree(k: Ink, w: number, h: number): void {
-  // curvy rubber-hose trunk
-  k.hose(w / 2, h - 4, w / 2 - 24, h - 90, w / 2 + 4, h - 150, 22, 0x4a3828, 3);
-  // foliage
-  cloudBlob(k, w / 2, 90, [[-40, 10, 38], [0, -18, 46], [40, 8, 38], [0, 30, 40]], 0x6f8a5c);
-  // sleepy face
-  k.line(w / 2 - 22, 88, w / 2 - 8, 88, 3);
-  k.line(w / 2 + 8, 88, w / 2 + 22, 88, 3);
-  const g = k.g;
-  g.lineStyle(3, INK, 1);
-  g.beginPath();
-  g.arc(w / 2, 102, 12, 0.3, Math.PI - 0.3);
-  g.strokePath();
-}
 
-function paintPole(k: Ink, w: number, h: number): void {
-  k.rrect(w / 2 - 7, 20, 14, h - 22, 4, 0x5a4532, 3);
-  k.rrect(4, 30, w - 8, 10, 3, 0x5a4532, 3);
-  for (const x of [12, w / 2 - 12, w / 2 + 12, w - 12]) k.rrect(x - 4, 18, 8, 12, 3, PAPER, 2);
-}
 
-function paintCloud(k: Ink, w: number, h: number): void {
-  cloudBlob(k, w / 2, h / 2 + 8, [[-70, 14, 32], [-30, -10, 42], [20, -14, 44], [66, 10, 34], [0, 20, 36]]);
-  // happy closed eyes + smile
-  const g = k.g;
-  g.lineStyle(3, INK, 1);
-  for (const x of [-20, 20]) {
-    g.beginPath();
-    g.arc(w / 2 + x, h / 2 + 2, 7, Math.PI + 0.3, -0.3);
-    g.strokePath();
-  }
-  g.beginPath();
-  g.arc(w / 2, h / 2 + 14, 12, 0.3, Math.PI - 0.3);
-  g.strokePath();
-}
 
 function paintHills(k: Ink, w: number, h: number): void {
   // tileable: period divides w

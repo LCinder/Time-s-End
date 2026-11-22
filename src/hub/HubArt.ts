@@ -2,6 +2,7 @@
 // everything that moves or dances is drawn by BijouScene every frame.
 
 import Phaser from 'phaser';
+import { bake } from '../fx/bake';
 import { INK, Ink, PAPER } from '../rig/Ink';
 import type { ParsedMap } from '../world/TileMap';
 import { FLOOR } from './HubLayout';
@@ -160,6 +161,26 @@ export function drawHub(scene: Phaser.Scene, map: ParsedMap): void {
     k.rrect(x - 40, 760, 80, 30, 4, 0x1c1c1c, 3);
     scene.add.text(x, 775, 'EXIT', font(18, '#f4efe4')).setOrigin(0.5).setDepth(6);
   }
+  // it never changes: bake it once instead of redrawing it every frame
+  bake(scene, bg, { width: map.width, height: map.height, depth: 5 });
+}
+
+/** The two rows of seats, drawn once (they bounce as a whole on the beat). */
+export const SEATS = { x: 1270, y: 1150, w: 900, h: 96 };
+
+export function drawSeats(scene: Phaser.Scene): Phaser.GameObjects.RenderTexture[] {
+  const g = scene.add.graphics();
+  const k = new Ink(g);
+  k.amp = 0.6;
+  for (let row = 1; row >= 0; row--) {
+    for (let c = 0; c < 16; c++) {
+      const x = 30 + c * 54 + row * 26;
+      const y = SEATS.h - 4 - row * 34;
+      k.rrect(x - 20, y - 46, 40, 46, 8, 0x5a2a26, 3);
+      k.rrect(x - 22, y - 16, 44, 16, 4, 0x6b3a32, 3);
+    }
+  }
+  return bake(scene, g, { width: SEATS.w, height: SEATS.h, depth: 24, at: { x: SEATS.x, y: SEATS.y - 6 } });
 }
 
 function door(k: Ink, g: Phaser.GameObjects.Graphics, x: number, floor: number, label: string): void {

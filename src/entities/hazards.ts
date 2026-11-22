@@ -466,6 +466,7 @@ export class SmokeRingHazard implements Hazard {
 
 export class LungeHazard implements Hazard {
   private peak: number;
+  private accented = false;
   private tele: number;
   private dist: number;
   private announced = false;
@@ -495,6 +496,10 @@ export class LungeHazard implements Hazard {
       boss.charge = 1;
       boss.lunge = -40 + (this.dist + 40) * (1 - Math.pow(1 - f, 3));
     } else if (b < this.peak + 0.5) {
+      if (!this.accented) {
+        this.accented = true;
+        boss.accent(); // the peak of the charge: a held pose
+      }
       boss.charge = 0.5;
       boss.lunge = this.dist;
     } else if (b < this.peak + 2.5) {

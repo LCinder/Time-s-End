@@ -12,6 +12,7 @@ import { Game, type GhostSample } from '../core/Game';
 import { recordLevel } from '../core/Save';
 import { Input } from '../core/Input';
 import { expandLyrics, type ExpandedLine } from '../core/lyrics';
+import { visemeAt } from '../core/visemes';
 import type { LevelData, LevelEvent } from '../core/types';
 import {
   CoalHazard, DropHazard, GroundWaveHazard, LungeHazard, LyricWordHazard, SmokeRingHazard,
@@ -19,6 +20,7 @@ import {
 } from '../entities/hazards';
 import { Player, type PlayerControls } from '../entities/Player';
 import { Smokestack } from '../entities/Smokestack';
+import { ACTS, actForLine, fillerAct, type ActName } from '../entities/SmokestackActs';
 import { addFilm, type FilmPipeline } from '../fx/FilmPipeline';
 import { boilKey } from '../fx/Textures';
 import { Hud } from '../ui/Hud';
@@ -101,6 +103,12 @@ export class ChaseScene extends Phaser.Scene {
   private ghostPrev: GhostSample[] | null = null;
   private ghost: Player | null = null;
   private ghostIdx = 0;
+  // ── the boss's repertoire director
+  private lastAct: ActName | null = null;
+  private lastLine = -1;
+  private nextFiller = 0;
+  private comboAct = 0;
+  private wasCharging = false;
 
   constructor() {
     super('Chase');
@@ -132,6 +140,11 @@ export class ChaseScene extends Phaser.Scene {
     this.bossCrashed = false;
     this.overlay = null;
     this.lastWholeBeat = -999;
+    this.lastAct = null;
+    this.lastLine = -1;
+    this.nextFiller = 0;
+    this.comboAct = 0;
+    this.wasCharging = false;
     this.flash = 0;
     this.dark = 0;
     this.startBeat = this.startCue > 0 ? this.cueBeats[this.startCue - 1] : Game.startBeat;
@@ -149,9 +162,15 @@ export class ChaseScene extends Phaser.Scene {
     this.input2 = new Input(this, Game.controls);
 
     this.world = new SolidWorld();
-    this.scenery = new Scenery(this, GROUND_Y);
     const diffName = Game.difficulty;
     const events = L.events.filter((e) => !e.only || e.only.includes(diffName));
+    this.scenery = new Scenery(this, GROUND_Y, {
+      config: L.scenery,
+      ppb,
+      tunnels: events
+        .filter((e) => e.type === 'tunnel')
+        .map((e) => ({ x1: e.beat * ppb + L.chase.anchorX, x2: (e.beat + Number(e.lengthBeats)) * ppb + L.chase.anchorX })),
+    });
     this.track = new Track(this, this.world, events, {
       groundY: GROUND_Y,
       ppb,
@@ -259,7 +278,7 @@ export class ChaseScene extends Phaser.Scene {
   // ───────────────────────── frame ─────────────────────────
 
   update(_time: number, delta: number): void {
-    const dt = Math.min(delta / 1000, 1 / 30);
+    const dt = Math.min(delta / 1000, 0.1); // Tick splits long frames into steps
     const time = this.time.now / 1000;
     this.input2.update();
 
@@ -457,6 +476,7 @@ export class ChaseScene extends Phaser.Scene {
 
   private onPlayerJump(): void {
     this.beatActions++;
+    if (this.lastJumpJudge.label === 'PERFECT!') this.player.accent();
     if (this.lastJumpJudge.label) {
       sfx('jumpBeat');
       this.registerOnBeat(this.lastJumpJudge.label);
@@ -465,6 +485,43 @@ export class ChaseScene extends Phaser.Scene {
       this.combo = 0;
     }
     this.lastJumpJudge = { mult: 1, label: '' };
+  }
+
+  /** Pick what the boss acts out: the lyrics, fillers in the instrumental bars, reactions. */
+  private directBoss(beat: number): void {
+    const b = this.boss;
+    if (this.state !== 'play') return;
+    const spb = this.conductor.secondsPerBeat(beat);
+    const play = (name: ActName): void => {
+      b.perform(name, ACTS[name].beats * spb);
+      this.lastAct = name;
+    };
+    // a new lyric line: act it out
+    const idx = this.lines.findIndex((l) => beat >= l.beat - 0.2 && beat <= l.end);
+    if (idx >= 0 && idx !== this.lastLine) {
+      this.lastLine = idx;
+      const act = actForLine(this.lines[idx].words.map((w) => w.text).join(' '), this.lastAct);
+      if (act) play(act);
+    }
+    // nobody singing and nothing going on: improvise a little
+    if (idx < 0 && !b.performing && b.arm === 'idle' && beat >= this.nextFiller) {
+      const f = fillerAct(this.lastAct);
+      play(f);
+      this.nextFiller = beat + ACTS[f].beats + 2;
+    }
+    // the player is doing too well: a double take, then steam out of the ears
+    if (this.combo >= 6 && this.comboAct < 1) {
+      this.comboAct = 1;
+      play('doubleTake');
+    } else if (this.combo >= 12 && this.comboAct < 2) {
+      this.comboAct = 2;
+      play('steamEars');
+    } else if (this.combo === 0) this.comboAct = 0;
+    // Tick looks back over his shoulder when the engine winds up a charge
+    const charging = b.charge > 0.3;
+    if (charging && !this.wasCharging) this.player.startle();
+    this.wasCharging = charging;
+    this.player.lookBias = charging ? -0.9 : null;
   }
 
   private registerOnBeat(label: string): void {
@@ -532,19 +589,23 @@ export class ChaseScene extends Phaser.Scene {
       b.screenX = L.chase.bossFrontX + b.lunge;
       const m = LyricsUI.mouthAt(this.lines, beat);
       b.mouth += (m.open - b.mouth) * Math.min(1, dt * 25);
-      b.mouthWide = m.index % 2 === 0;
+      b.viseme = m.word ? visemeAt(m.word, m.f) : 'rest';
       // a puff of smoke out of the mouth on every shouted word
       if (m.shout && !b.shouting && this.state === 'play') {
+        b.accent(); // a held "hit" pose on every shouted word
         const mp = b.mouthPos;
         for (let k = 0; k < 3; k++) {
           this.particles.push(this.particle('puff', mp.x + this.camX + 30, mp.y, 160 + Math.random() * 120, -60 + Math.random() * 80, 0.8, 0.6));
         }
       }
       b.shouting = m.shout;
+      this.directBoss(beat);
       b.nervous += ((this.combo >= 8 ? 0.7 : 0) - b.nervous) * Math.min(1, dt * 3);
       b.wheelAngle += ((camSpeed + (b.charge > 0.5 ? 400 : 0)) / 58) * dt;
     }
     b.lookTarget = { x: this.player.x - this.camX, y: this.player.y - 60 };
+    // his eyes burn in the tunnel and at night
+    b.dark = Math.max(this.dark, this.scenery.night * 0.6);
     b.update(dt, time, beat);
   }
 
@@ -561,6 +622,7 @@ export class ChaseScene extends Phaser.Scene {
     this.flash = 0.35;
     this.cameras.main.shake(220, 0.012);
     this.boss.laugh();
+    this.player.dizzy();
     this.windSpring(-this.springTune.hit);
     if (this.rehearsal) {
       this.hits = Math.min(this.hits, Game.diff.playerHits - 1);
@@ -949,10 +1011,14 @@ export class ChaseScene extends Phaser.Scene {
     f.damage += (targetDamage - f.damage) * Math.min(1, dt * 4);
     this.flash = Math.max(0, this.flash - dt * 2.5);
     f.flash = this.flash * (Game.settings.reduceFlicker ? 0.25 : 1);
-    f.dark = this.dark * 0.94;
+    // the tunnel is pitch black; the night only dims the picture (lamps still cut through)
+    f.dark = Math.max(this.dark * 0.94, this.scenery.night * (this.level.scenery?.nightDark ?? 0.45));
     f.light1 = { x: this.player.x - this.camX, y: this.player.y - 60, r: 190 };
     const lamp = this.boss.lamp;
     f.light2 = { x: lamp.x + 280, y: lamp.y + 230, r: 330 };
+    // in the dark, two burning eyes
+    const eyes = this.boss.eyesPos;
+    f.light3 = this.boss.dark > 0.3 && !this.bossCrashed ? { x: eyes.x, y: eyes.y, r: 80 } : { x: -9999, y: -9999, r: 1 };
   }
 
   private emitPuff(): void {
