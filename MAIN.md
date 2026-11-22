@@ -51,6 +51,8 @@ Un juego 2D para **navegador** con estética de **dibujos animados de los años 
 
 Los niveles alternan entre **derrotar al jefe** (duelos) y **huir / progresar** mientras el jefe te persigue (persecuciones, torres, etc.).
 
+**Tema: el tiempo, su paso y la soledad.** Por fuera, el juego es alegre y rebotón, como los dibujos de los 30; por debajo, es melancólico. Ese contraste (canciones animadas con letras tristes) es muy de la época y es el tono de todo el juego: un reloj solo en un cine vacío que ayuda a otros solitarios a terminar su película.
+
 **Inspiraciones:** el estilo de animación de los años 30 (Fleischer, Disney, Van Beuren) y la idea de los jefes que cantan en juegos de ritmo y plataformas.
 **Regla legal:** todo es **original** (personajes, diseños, canciones y nombres). No copiamos personajes, diseños ni canciones de ningún juego o estudio existente.
 
@@ -73,15 +75,30 @@ Los niveles alternan entre **derrotar al jefe** (duelos) y **huir / progresar** 
 | 5 | **El jefe reacciona** | Si fallas, se burla con una línea alternativa. Si vas bien, se pone nervioso: le tiembla la voz y la canción tartamudea. |
 | 6 | **Progresión de color = historia de la animación** | Los primeros jefes son en blanco y negro (1928), después sepia, luego Technicolor de dos tonos y el final a todo color. |
 | 7 | **Encore** | Al vencer a un jefe se desbloquea un remix más rápido y difícil de su canción. |
+| 8 | **El cine se llena** | El mapa es la sala vacía del Bijou. Cada jefe al que le das su final se sienta en una butaca. Al terminar el juego, la sala está llena y todos ven juntos la última película: la de Tick. Es la medida visual del progreso… y de vencer a la soledad. |
+| 9 | **Solos de silencio** | En momentos de cada canción la música se corta y solo se oye el tic-tac de Tick. Los peligros siguen cayendo en el beat y hay que mantener el ritmo **de memoria**. El péndulo de Tick sigue marcando el beat: es la única ayuda. |
+| 10 | **La cuerda del reloj** | Tick va perdiendo cuerda. Cada acción a tiempo le da cuerda; si fallas mucho, el mundo se ralentiza un poco (imagen y música), como un reloj que se para. Es un "tiempo que se acaba" que se nota sin barra. |
+| 11 | **Tu fantasma de antes** | Al reintentar, una silueta translúcida de tu intento anterior corre a tu lado. Nunca estás del todo solo: te acompaña quien fuiste hace un minuto. |
+| 12 | **Las estaciones por la ventana** | Entre nivel y nivel, por la ventana de la cabina de proyección se ven pasar las estaciones (hojas, nieve, primavera). Refuerza la progresión de color por épocas: el tiempo pasa. |
+| 13 | **Objetos perdidos** | En los niveles hay entradas de cine, cartas sin enviar y fotos del proyeccionista. Cuentan su historia sin texto: quién se fue, a quién esperaba. Se guardan en la cabina. |
+| 14 | **Un final en silencio** | El último nivel no tiene enemigos. Es medianoche: la música se apaga instrumento a instrumento hasta que solo queda Tick marcando el ritmo en silencio… y algo le responde. |
 
 ---
 
-## 3. Historia (borrador)
+## 3. Historia ✅
 
-El viejo cine **"The Bijou"** ha cerrado. En la cabina de proyección, el reloj del proyeccionista (**nuestro protagonista**) despierta y descubre que los villanos de las bobinas se han escapado de sus cortos y le han robado al cine **el color y la música**. Para devolverle la vida al cine, el protagonista entra en cada bobina, sobrevive a la canción de cada villano y recupera un poco de color.
+Une tres ideas: **el reloj de alguien que ya no está** (A), **el último minuto** (B) y **villanos que no quieren que su película acabe** (C).
 
-- El **mapa del juego** es la cabina de proyección / la sala del cine: cada bobina es un nivel.
-- Cada nivel empieza con un **cartel de título** al estilo de los 30 y termina con *"That's all, folks?"*… o algo propio (por definir).
+**El punto de partida (A + B).** El viejo cine **"The Bijou"** cerró hace años. Su proyeccionista, Elias (nombre provisional), siguió yendo cada noche a proyectar películas para una sala vacía. Una noche no volvió. Su reloj de bolsillo, **Tick**, se quedó en la cabina de proyección y se paró a las **11:59**. Ahora Tick despierta en un cine polvoriento, solo. Todo el juego ocurre dentro de ese **último minuto antes de medianoche**: cada bobina que termina adelanta la aguja, y la última da las doce (*Time's End*).
+
+**Los villanos (C).** Los personajes de las bobinas están atrapados repitiendo su corto para siempre, porque **acabar es ser olvidado**. Por eso se resisten, cantan y atacan. En el fondo, todos están solos, y cada uno encarna una cara del tiempo: las despedidas, la soledad, las oportunidades perdidas, envejecer, estar separados, esperar a alguien, la soledad con uno mismo… Vencerlos **no es destruirlos sino darles su final**: cuando termina su canción aparece *"That's all, folks?"*, el personaje se despide en paz y va a sentarse en una butaca del cine (idea 8).
+
+**Los recuerdos.** Cada bobina es también un recuerdo de la vida de Elias, y sus miedos y nostalgias son los que dan forma a los villanos. Los objetos perdidos (idea 13) y las estaciones por la ventana (idea 12) van contando su historia sin palabras: quién se fue, a quién esperaba, qué tren no cogió.
+
+**El final.** Medianoche. La sala está llena con todos los personajes a los que Tick dio su final. Se proyecta la última película, la de Tick, y llega el nivel en silencio (idea 14): solo Tick marcando el ritmo… hasta que algo le responde (un latido, o Elias). Agridulce.
+
+- El **mapa del juego** es el propio cine, el Bijou: un mundo central que se recorre (§6.1). La esfera de Tick marca cuánto falta para medianoche.
+- Cada nivel empieza con un **cartel de título** al estilo de los 30 y termina con *"That's all, folks?"*.
 
 ---
 
@@ -92,6 +109,8 @@ El viejo cine **"The Bijou"** ha cerrado. En la cabina de proyección, el reloj 
 - Las agujas del reloj le hacen de bigotito y giran solas.
 - Tiene guantes blancos, zapatones y ojos de porción de tarta.
 - Más adelante: la tapa se abrirá y cerrará al disparar (niveles Duel).
+- Era el reloj de **Elias, el proyeccionista**. Sus agujas marcan las **11:59** al empezar y avanzan con cada bobina terminada.
+- La **corona** (la ruedecita de dar cuerda) muestra cuánta cuerda le queda (idea 10).
 
 ---
 
@@ -122,6 +141,12 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 - La vida se representa con el **estado de la película** (idea 4). Base: 3 golpes, configurable.
 - Al morir, el reinicio es rápido, con el efecto de rebobinado.
 
+### 5.5 Mecánicas del tema (tiempo y soledad)
+- **Solos de silencio** (idea 9): un evento de nivel, `silence`, corta la música durante unos compases (queda el tic-tac y, si acaso, un metrónomo muy bajo). Los peligros siguen en el beat. Las primeras veces se avisa con un cartel (*"Keep time!"*).
+- **La cuerda** (idea 10): no sustituye a la vida (la película). Es un medidor aparte: cada acción a tiempo da cuerda y los fallos o el tiempo la gastan. Con poca cuerda, el mundo va un poco más lento: la música baja de tono y velocidad unos segundos y los peligros se ajustan para que siga siendo justo. Se recupera enseguida acertando. Debe sentirse, no castigar: dificultad configurable en `difficulty.json`.
+- **El fantasma** (idea 11): se graba la posición de Tick en cada intento y, en el siguiente, se dibuja en translúcido. Se puede apagar en opciones.
+- **Oportunidades únicas** (Mister Too-Late, §7): objetos que aparecen **un solo beat**; si no los coges, se pierden para esa partida.
+
 ---
 
 ## 6. Tipos de nivel
@@ -130,33 +155,169 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 |------|----------------|----------|
 | **Duel** | Arena fija | Bajar la vida del jefe en varias fases (cada fase con un estilo musical distinto). |
 | **Chase** | *Scroll* lateral automático; el jefe persigue desde detrás | Llegar al final de la canción. |
-| **Tower** | *Scroll* vertical hacia arriba; algo sube por debajo | Subir hasta la cima antes de que te alcance. |
-| **Call & Response** | Arena fija | El jefe enseña un patrón en la estrofa y en el estribillo lo repite más rápido. |
+| **Tower** | *Scroll* vertical hacia arriba; algo sube por debajo | Subir hasta la cima antes de que te alcance (en el faro: la marea). |
+| **Call & Response** | Arena fija | El jefe enseña un patrón en la estrofa y en el estribillo lo repite más rápido. Variante *Mirror*: el jefe repite **lo que haces tú** un compás después (The Echo). |
+| **Last Call** | *Scroll* lateral con andenes y trenes que pasan | Las oportunidades (puertas de tren abiertas, billetes dorados, escalerillas) aparecen **un solo beat**. Cada una que coges le hace daño al jefe; las que pierdes, él las guarda en su colección y no vuelven en esa partida. |
 | **Lullaby** (sigilo) | Arena o *scroll* lento | Moverte solo cuando la música suena fuerte; en los silencios, quieto o el jefe despierta. |
 | **Vehicle** | *Scroll* lateral de disparos (biplano, tren, bañera…) | Sobrevivir y disparar al ritmo. |
 | **Vaudeville** | Escenario de teatro | El público lanza cosas y el jefe presenta números del espectáculo. |
+| **Newsreel** (entre jefes) | *Scroll* lateral rápido | Noticiario: corre-y-salta corto e intenso con carteles de noticiario y narrador. |
+| **Serial** (entre jefes) | Plataformas | Historia por capítulos; cada uno acaba en *"To be continued…"*. |
+| **Sing-along** (entre jefes) | Plataformas relajadas | Las palabras de la letra son las plataformas y la pelotita marca dónde saltar. |
+| **Memory** (entre jefes) | Plataformas tranquilas, estilo cine mudo | Un recuerdo de Elias, con intertítulos; al final, un objeto perdido. |
+| **Darkroom** (cambio de época) | Plataformas | En el cuarto de revelado, el color nuevo se filtra en el mundo a tu paso. |
+
+### 6.1 La sala central: el Bijou
+El cine es un **mundo que se recorre**, no un menú. Tick se mueve por él con los mismos controles que en los niveles, y todo baila al compás.
+
+**Zonas** (se abren a medida que avanza el reloj de las 11:59):
+
+| Zona | Qué hay |
+|---|---|
+| **Cabina de proyección** | Donde despierta Tick. El proyector, la mesa de Elias con los objetos perdidos recuperados y la ventana de las estaciones (idea 12) |
+| **Sala (patio de butacas)** | La pantalla, el escenario y las butacas que se van llenando (idea 8) |
+| **Vestíbulo** | Taquilla, puesto de palomitas, carteles de *"Coming Soon"*, el reloj de pie y la caja de objetos perdidos |
+| **Anfiteatro y vigas del techo** | Zonas altas a las que se llega con plataformas |
+| **Sótano: archivo de bobinas** | Oscuro, quizá inundado. El cuarto de revelado (Darkroom) |
+| **Tejado y marquesina** | El final: medianoche bajo las estrellas, con las letras luminosas de la marquesina |
+
+**Cómo se entra a los niveles**
+- **Los jefes (las películas principales), por la pantalla**, con un ritual:
+  1. Se consigue la bobina.
+  2. Tick sube a la cabina y **enhebra la película en el proyector**: un minijuego corto de ritmo, girando los rodillos a tiempo, que ya enseña el ritmo del jefe.
+  3. El haz se enciende y aparece el cartel del corto.
+  4. Tick corre por el pasillo, salta al escenario y se lanza dentro de la imagen.
+- **Los recuerdos, por los objetos de Elias**: su abrigo en el perchero, una fotografía, la caja de objetos perdidos…
+- **Algunos jefes tienen además una entrada temática**: The Echo por el espejo del vestíbulo (dentro, el reflejo no te imita del todo), Grandfather Pendulum por el reloj de pie, Mister Too-Late por la taquilla y Miss Pirouette por una caja de música de objetos perdidos.
+
+**Qué abre el paso: los fotogramas.** Están escondidos en los niveles entre jefes. Con suficientes fotogramas se **empalma la bobina** del siguiente jefe. Guiño: el cine va a 24 fotogramas por segundo, así que juntarlos es, literalmente, recuperar segundos de tiempo.
+
+**Un cine que cuenta el tema**
+- **Luz y polvo:** al principio todo está a oscuras y polvoriento. El polvo desaparece por donde pasa Tick y las zonas se iluminan al avanzar el reloj.
+- **El órgano del cine** (un órgano de teatro de los 20) toca la música de la sala. Empieza con una nota temblorosa y **gana un instrumento por cada jefe liberado**: la soledad se oye.
+- **Los jefes liberados son los habitantes de la sala.** Están sentados en sus butacas, comentan, dan pistas o simplemente están. El arco de la soledad a la compañía se vive aquí.
+- **La marquesina** anuncia el siguiente estreno (*"NOW SHOWING: MISTER TOO-LATE"*).
+
+### 6.2 Entre jefes: la sesión de cine
+En los años 30 no se iba a ver una sola película: la sesión tenía **noticiario, corto, serial, a veces un corto para cantar y la película principal**. Cada capítulo del juego es una sesión completa, así el ritmo cambia constantemente y nunca es solo "entrar, jefe, repetir".
+
+| Pieza de la sesión | Nivel |
+|---|---|
+| **Newsreel** | Corre-y-salta rápido con narrador entusiasta y saltos al ritmo de una marcha |
+| **The Serial** | Plataformas por capítulos que continúan de una sesión a otra, cada uno acabado en suspense. Cuenta la juventud de Elias, o a Tick persiguiendo a una bobina fugitiva |
+| **Sing-along short** | Las palabras son las plataformas y la pelotita marca el salto (la idea 1 llevada a un nivel entero). Relajado |
+| **The Feature** | El jefe |
+
+**Otros niveles de plataformas**
+- **Recuerdos de Elias** (Memory): tranquilos y melancólicos, estilo cine mudo (*"Spring, 1912…"*), con música instrumental y plataformas que se mueven al ritmo. Terminan en un objeto perdido (idea 13).
+- **El propio edificio:** llegar a una zona nueva exige plataformas de verdad, por las vigas sobre la sala, el telar detrás de la pantalla (cuerdas y sacos de arena que caen al ritmo), los conductos del aire, el archivo inundado o la marquesina con letras de neón que se encienden en el beat.
+- **El cuarto de revelado** (Darkroom): marca cada cambio de época. Luz roja, bandejas de revelador e imágenes que aparecen a tu paso, mientras el color nuevo se filtra en el mundo.
+- **La bobina fugitiva:** persecución al revés por todo el cine; esta vez Tick persigue.
+- **Minijuegos de la sala** (cortos y opcionales): la máquina de palomitas (cada palomita salta en el beat), la taquilla y enhebrar el proyector.
+
+**Un capítulo tipo**
+1. **Recorrido** por el edificio hasta la zona nueva.
+2. **Intermedio:** noticiario, capítulo del serial o corto para cantar. Se ganan fotogramas.
+3. **Recuerdo de Elias** (opcional): la historia y un objeto perdido.
+4. **Bobina:** se empalma, se enhebra el proyector y Tick salta a la pantalla.
+5. **El jefe** y su final.
+6. **De vuelta en la sala:** el jefe se sienta en su butaca, el órgano gana un instrumento, la aguja avanza y la estación cambia por la ventana.
+
+### 6.3 Guardar, volver y empezar rápido
+**Principio:** nunca hay que repetir lo que ya has hecho para volver a lo que estabas haciendo. **Objetivo:** desde que abres el juego hasta que estás jugando lo que dejaste, menos de 10 segundos.
+
+**Guardado automático**
+- Se guarda al terminar cada nivel, al entrar en cada zona de la sala y al coger cada coleccionable.
+- Hay **3 partidas**, presentadas como 3 latas de película (*Reel A, B y C*).
+- Las opciones y la calibración van aparte: son del ordenador, no de la partida.
+
+**Pantalla de título**
+- **CONTINUE** (por defecto): vuelve exactamente a donde estabas. Si cerraste a mitad de un nivel, pregunta *"Resume FULL STEAM AHEAD?"* y empieza en su último punto de control.
+- **NEW GAME**.
+- **PROGRAMME:** el programa de mano del cine, que hace de **selector de niveles**. Contiene todo lo desbloqueado (jefes, noticiarios, capítulos del serial, cortos para cantar y recuerdos), con el mejor rango y los fotogramas encontrados en cada uno. Elegir algo **lleva directo al nivel**, sin recorrido ni ritual. También se abre desde la pausa en la sala.
+- **CALIBRATE** y **OPTIONS**.
+
+**Al perder**
+- **Nunca te devuelve a la sala.** Se rebobina y reintentas al instante, como ahora.
+- **Puntos de control:**
+  - en los duelos, uno por fase (cada vuelta de llave, cada vuelta del reloj de arena…);
+  - en los niveles largos, **marcas de cambio de bobina**: los circulitos que aparecían en la esquina de los fotogramas antiguos para avisar al proyeccionista. Son el punto de control.
+- **Ensayo:** tras 3 derrotas en el mismo sitio, se ofrece *"Rehearsal"*, practicar desde esa sección sin penalización (lo que ahora hace `?beat=`).
+
+**Lo largo solo una vez**
+- **Ritual del proyector:** completo la primera vez. Después, el proyector se queda enhebrado y Tick salta directamente.
+- **Escenas:** toda escena o ritual ya visto se salta **manteniendo pulsado** un botón, para no saltarlo sin querer.
+- **Atajos en el edificio:** cada recorrido abre un atajo al completarlo (una cuerda que cae, el montaplatos del servicio, una escalera). Se recorre una vez.
+- **Rejugar a un jefe sin menús:** se habla con él en su butaca para volver a jugar su película (y su encore, cuando se desbloquee).
+
+**Si vuelves después de un tiempo**
+- Si han pasado varios días, un intertítulo de cine mudo resume dónde estabas: *"Previously at the Bijou…"*.
+- El siguiente capítulo del serial empieza con *"Previously…"*.
+
+**Técnica**
+- La partida se guarda en el navegador (`localStorage`, clave `timesend.save.<A|B|C>.v1`), con número de versión para poder migrarla y siempre con try/catch, igual que la calibración.
+- Contiene:
+  - el progreso del reloj;
+  - los niveles completados y su mejor rango;
+  - los fotogramas, objetos perdidos, atajos y bobinas enhebradas;
+  - la zona y el punto de la sala donde estabas;
+  - el nivel y el punto de control si cerraste a mitad.
+- Más adelante: exportar e importar la partida como código de texto para pasarla a otro ordenador.
+
 
 ---
 
-## 7. Jefes (7 iniciales)
+## 7. Jefes
 
-| # | Jefe (nombre en inglés) | Concepto | Tipo de nivel | Época / paleta | Estilo musical |
-|---|-------------------------|----------|---------------|----------------|----------------|
-| 1 | **Old Smokestack** | Locomotora con cara, bigote de humo, muy fanfarrona | Chase | 1928 B/N | Ragtime / swing de tren |
-| 2 | **Madame Gramola** | Diva fonógrafo; cada disco que pone es una fase | Duel | 1928 B/N | Tango → Polka → Charlestón |
-| 3 | **Baron Bonejangle** | Esqueleto elegante que toca su costillar como un xilófono | Duel con plataformas | 1930 sepia | Danza macabra / foxtrot |
-| 4 | **Captain Squidwhisker** | Pulpo pirata con bigote de tentáculos | Tower (mástil mientras el barco se hunde) | 1930 sepia | Saloma marinera |
-| 5 | **Lady Lullamoon** | Luna con insomnio que solo quiere dormir | Lullaby | 1932 Technicolor de dos tonos | Nana / vals |
-| 6 | **Mister Thunderhead** | Nube de tormenta con chistera | Vehicle (biplano) | 1932 Technicolor de dos tonos | Gospel / boogie-woogie |
-| 7 | **Maestro Baton** | Director de orquesta gigante que controla la banda sonora del juego | Chase → Duel | 1935 todo color | Big band / popurrí de todos los jefes |
+Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica que la cuenta y canta sobre ella con una canción animada y una letra con fondo triste. Vencerlo es darle su final (§3).
+
+| # | Jefe | Tema | Tipo de nivel | Época / paleta | Estilo musical |
+|---|------|------|---------------|----------------|----------------|
+| 1 | **Old Smokestack** | Las despedidas | Chase | 1928 B/N | Ragtime / swing de tren |
+| 2 | **Miss Pirouette** | La soledad | Duel | 1928 B/N | Vals de caja de música → minueto → vals frenético |
+| 3 | **Mister Too-Late** | Las oportunidades perdidas | Last Call | 1930 sepia | Blues lento de andén → ragtime con prisa |
+| 4 | **Grandfather Pendulum** | Envejecer | Duel con plataformas | 1930 sepia | Marcha solemne que se va ralentizando |
+| 5 | **The Hourglass Sisters** | Estar separados | Duel (la gravedad se invierte) | 1932 Technicolor de dos tonos | Dueto de *close harmony* (estilo hermanas de los 30) |
+| 6 | **The Lighthouse Keeper** | Esperar a alguien | Tower | 1932 Technicolor de dos tonos | Saloma marinera / vals de acordeón |
+| 7 | **The Echo** | La soledad con uno mismo | Call & Response (*Mirror*) | 1935 todo color | Swing a dos voces (Tick y su sombra) |
+| 8 | **Maestro Baton / The Last Reel** | El fin del tiempo | Chase → Duel → nivel en silencio | 1935 todo color | Big band / popurrí de todos los jefes |
+| extra | **Lady Lullamoon** | El insomnio, la noche sola | Lullaby | 1932 | Nana / vals |
+| extra | **Sir Tear-Off** | Los días que pasan | Chase | 1930 | Cambia de estilo con cada estación |
+
+**1. Old Smokestack (las despedidas).** El último tren, el que se lleva a la gente que no vuelve. La persecución ya existe; solo se le añade este trasfondo. Es el mismo tren que perdió Mister Too-Late. *Momento estrella:* el puente roto, el tren que nunca llega.
+
+**2. Miss Pirouette (la soledad)** — *sustituye a Madame Gramola.*
+- **Concepto:** una bailarina diminuta dentro de una caja de música que lleva cincuenta años bailando la misma melodía, sola, esperando que alguien abra la tapa. Silueta: tutú de campana, brazos de manguera en quinta posición, la llave de la cuerda clavada en la espalda.
+- **Mecánica:** cada fase es una vuelta de llave, y el vals va cada vez **más rápido**, al contrario que Grandfather Pendulum. Los dientes del peine de la caja disparan notas que hay que **devolver a tiempo** (parry). Cuando la tapa se cierra, todo queda a oscuras y en silencio: solo de silencio (idea 9) dentro de la caja.
+- **Momento estrella:** se acaba la cuerda, la melodía se ralentiza hasta pararse y, por primera vez, alguien la está mirando: hace una reverencia ante Tick.
+
+**3. Mister Too-Late (las oportunidades perdidas).**
+- **Concepto:** un reloj de estación con gorra de jefe de estación y farol, que va siempre **un minuto tarde** (sus agujas están atascadas un minuto por detrás). Hace décadas dudó en el andén y perdió el tren: el tren que se llevaba a alguien, o su gran oportunidad. Desde entonces vive en el andén vacío y colecciona oportunidades perdidas en tarros: billetes sin usar, cartas sin abrir, anillos que nunca entregó. Ahora se asegura de que todo el mundo pierda el suyo.
+- **Mecánica (nivel *Last Call*):** las oportunidades aparecen un solo beat, exactamente en el beat (una puerta de vagón que se abre, un billete dorado que vuela, una escalerilla). Cogerlas le hace daño. Las que pierdes, él las mete en un tarro y **no vuelven en esa partida**, así que el final es más difícil cuantas más pierdes. La letra anuncia cada oportunidad (*"Last call for…"*), pero solo una vez.
+- **Momento estrella:** llega el último tren de la noche. Él vuelve a dudar, y esta vez Tick tiene que saltar con él al vagón en el beat exacto. Si lo consigue, Mister Too-Late por fin sube y se va: su final.
+
+**4. Grandfather Pendulum (envejecer).** Un reloj de pie, viejo y cansado: el abuelo de Tick. Su canción **se ralentiza** a lo largo del combate, un reto real de ritmo cambiante. Ataca con campanadas que caen en las horas. *Momento estrella:* da las doce: doce campanadas, doce peligros.
+
+**5. The Hourglass Sisters (estar separados).** Dos hermanas encerradas en un reloj de arena, una arriba y otra abajo: nunca coinciden en la misma mitad. En cada fase el reloj **se da la vuelta** y la gravedad se invierte. *Momento estrella:* la arena se detiene y por fin se encuentran en el centro.
+
+**6. The Lighthouse Keeper (esperar a alguien).** Un farero que lleva años esperando un barco que no vuelve. Nivel Tower: se sube el faro mientras **la marea** (otra forma de tiempo) sube por debajo, y la luz barre la pantalla al ritmo. *Momento estrella:* enciende el faro y, a lo lejos, una vela responde. Recoge la idea de Captain Squidwhisker (Tower en el mar).
+
+**7. The Echo (la soledad con uno mismo).** La sombra de Tick, que **repite lo que haces un compás después**. Si dudas, ella duda. *Momento estrella:* dejáis de imitaros y bailáis juntos.
+
+**8. Maestro Baton / The Last Reel (el fin del tiempo).** El director que quiere bajar el telón del cine para siempre. Popurrí de todas las canciones, y cada jefe al que diste su final vuelve a tocar su parte contigo. Termina con el nivel en silencio de medianoche (idea 14).
+
+**Extras (encore o contenido adicional).** **Lady Lullamoon**: la luna con insomnio, nivel de sigilo; se duerme por fin y amanece. **Sir Tear-Off**: un calendario de pared frenético al que se le arrancan las hojas; persecución en la que cada hoja es un peligro y las estaciones (y el estilo musical) cambian a mitad de la canción.
+
+*Conceptos anteriores aparcados* (podrían volver si encajan con el tema): Madame Gramola (descartada), Baron Bonejangle (esqueleto con costillar-xilófono), Captain Squidwhisker (integrado en el farero) y Mister Thunderhead (nube con chistera, nivel Vehicle).
 
 **Reglas de diseño de jefes:**
-- Cada jefe tiene un **momento estrella** (un gag visual grande sincronizado con el clímax de la canción).
+- Cada jefe tiene un **momento estrella** (un gag visual grande sincronizado con el clímax de la canción) que también es **su final** (§3).
+- Cada jefe encarna una cara del tiempo o de la soledad, y su mecánica la cuenta.
 - Cada jefe tiene un rasgo de silueta reconocible al instante (nada de "mancha negra con ojos": siluetas variadas).
 - Cada jefe tiene unas **líneas alternativas** de burla (cuando fallas) y de nervios (cuando vas bien).
 
 ### Demo (alcance)
-- **Primero solo el Jefe 1, Old Smokestack (Chase)**, hasta pulirlo. Después, Madame Gramola (Duel) y el resto.
+- **Primero solo el Jefe 1, Old Smokestack (Chase)**, hasta pulirlo. Después, Miss Pirouette (Duel) y el resto.
 - Pantalla de título, carteles de título, *game over* con quemado de película y rebobinado, y pantalla de victoria con rango.
 - Más adelante: mapa del cine con las bobinas y un editor de ritmo (ver §10).
 
@@ -217,6 +378,8 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 - Sonido **antiguo** (de grabación de los años 30: algo de crepitar de vinilo y un ecualizador "de radio"), variando de género en cada jefe.
 - **Canciones en inglés.**
 - La palabra del peligro cae en un **tiempo fuerte**, y se anuncia **1–2 beats antes** en la letra.
+- **Tono:** música animada y letra con fondo triste. Cada canción habla, de forma juguetona, del tema de su jefe (despedidas, soledad, oportunidades perdidas…) y del miedo a que su película acabe.
+- Cada canción incluye al menos un **solo de silencio** (idea 9): unos compases en los que la banda calla y los peligros siguen.
 
 ### 9.2 Flujo de trabajo
 1. **Diseño conjunto:** para cada jefe escribimos un *brief* con el BPM, la estructura por compases y la lista de peligros, y a cada peligro le corresponde una línea de la letra.
@@ -431,9 +594,13 @@ Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la con
 | 4 | Calibración de latencia en el menú y editor de ritmo | ✅ calibración · ⏳ editor de ritmo |
 | 4b | Herramientas: sincronización en un comando, eventos anclados a palabras, comprobador de niveles, pruebas y CI | ✅ |
 | 5 | Reacciones del jefe con voz (burlas y nervios), stems y música adaptativa | ⏳ |
-| 6 | Nivel **Duel**: Madame Gramola (fases = discos), disparo y devolución a tiempo | ⏳ |
-| 7 | Mapa del cine con bobinas y progresión de color | ⏳ |
-| 8+ | Resto de jefes, encore, arte aportado por el autor y publicación | ⏳ |
+| 5b | Mecánicas del tema en Smokestack: solos de silencio, la cuerda del reloj y el fantasma del intento anterior | ⏳ |
+| 5c | Guardado y vuelta rápida (§6.3) ya con un solo nivel: CONTINUE, PROGRAMME (selector), puntos de control y *Rehearsal* | ⏳ |
+| 6 | Nivel **Duel**: Miss Pirouette (fases = vueltas de llave), disparo y devolución a tiempo | ⏳ |
+| 7 | La sala central, el Bijou (§6.1): zonas, ritual del proyector, fotogramas, órgano, sala que se llena, estaciones, objetos perdidos, esfera de las 11:59 y progresión de color | ⏳ |
+| 7b | Niveles entre jefes (§6.2): noticiario, serial, corto para cantar, recuerdos, recorridos por el edificio, cuarto de revelado y bobina fugitiva | ⏳ |
+| 8 | Nivel **Last Call**: Mister Too-Late (oportunidades únicas) | ⏳ |
+| 9+ | Resto de jefes, final en silencio, encore, arte aportado por el autor y publicación | ⏳ |
 
 ---
 
@@ -452,13 +619,18 @@ Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la con
 - Las canciones finales las crea el autor siguiendo un *brief* con BPM, estructura y peligros; mientras tanto suena la banda provisional.
 - Sonido antiguo, variando el estilo en cada nivel.
 - Protagonista: **Tick**, reloj de bolsillo con péndulo de metrónomo.
-- Historia del cine aprobada.
-- 7 jefes iniciales, ampliables. Se empieza **solo con Old Smokestack** hasta que esté pulido.
+- **Tema: el tiempo, su paso y la soledad.** Historia = A + B + C (§3): el reloj del proyeccionista que ya no está, el último minuto antes de medianoche y villanos a los que se les da su final.
+- Todas las ideas del tema (ideas 8–14) aprobadas.
+- Estructura del juego aprobada: el cine como mundo central (§6.1), cada capítulo como una sesión de cine con niveles de plataformas entre jefes (§6.2) y guardado y vuelta rápida sin repetir nada (§6.3).
+- Jefes (§7): Madame Gramola descartada; entran Miss Pirouette y Mister Too-Late (oportunidades perdidas). Se empieza **solo con Old Smokestack** hasta que esté pulido.
 - Nombres de los jefes en inglés aprobados.
 - Controles por defecto aprobados.
 - Repositorio: `github.com/LCinder/Time-s-End`.
 
 ## 14. Preguntas abiertas
-- Título definitivo del juego (provisional: *Time's End*).
+- Título definitivo del juego (provisional: *Time's End*, que ahora encaja con la medianoche de la historia).
+- Nombre definitivo del proyeccionista (provisional: Elias).
+- ¿Qué responde a Tick al final: un latido, Elias, o queda abierto?
+- Orden exacto de los jefes 4–7 y si Lady Lullamoon y Sir Tear-Off entran en la historia principal o quedan como extras.
 - Herramienta con la que el autor creará las canciones.
 - En persecución: ¿mantener el auto-correr (`autoRun: true`) o que haya que mantener → pulsado?
