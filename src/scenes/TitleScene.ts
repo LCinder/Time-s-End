@@ -1,14 +1,17 @@
-// Title screen: Tick dances to a little ragtime loop. Menu: PLAY (with difficulty) or CALIBRATE.
+// Title screen: Tick dances to a little ragtime loop.
+// CONTINUE puts you back exactly where you were (MAIN.md §6.3); NEW GAME / LOAD GAME
+// pick a film can; PROGRAMME is the level select; OPTIONS and CALIBRATE.
 
 import Phaser from 'phaser';
-import { sfx } from '../audio/Sfx';
 import { PlaceholderSong } from '../audio/Songs';
 import { Conductor } from '../core/Conductor';
 import { Game } from '../core/Game';
 import { Input } from '../core/Input';
+import { clockText, daysAway, framesAvailable, loadSave, SLOTS, type SaveData } from '../core/Save';
 import type { PlaceholderMusic } from '../core/types';
 import { Player } from '../entities/Player';
 import { addFilm } from '../fx/FilmPipeline';
+import { Menu } from '../ui/Menu';
 import { Scenery } from '../world/Scenery';
 
 const TITLE_MUSIC: PlaceholderMusic = {
@@ -20,26 +23,47 @@ const TITLE_MUSIC: PlaceholderMusic = {
   ],
 };
 
+/** "Reel A · 11:59:07 · 5 frames · 1 friend" */
+export function saveSummary(s: SaveData): string {
+  const friends = s.freed.length;
+  return `Reel ${s.slot} · ${clockText(s, Game.story.secondsPerBoss)} · ${framesAvailable(s)} frames · ${friends} friend${friends === 1 ? '' : 's'}`;
+}
+
+/** CONTINUE: resume a level left half-way, or go back to the Bijou (with a recap after a long time away). */
+export function continueGame(scene: Phaser.Scene, save: SaveData): void {
+  Game.save = save;
+  Game.settings.lastSlot = save.slot;
+  Game.saveSettings();
+  if (save.resume && (Game.levels[save.resume.levelId] || Game.platformLevels[save.resume.levelId])) {
+    scene.scene.start('Resume', { levelId: save.resume.levelId, cue: save.resume.cue });
+    return;
+  }
+  if (daysAway(save) > 3) {
+    const friends = save.freed.length ? `${save.freed.length} friend${save.freed.length > 1 ? 's' : ''} in the audience.` : 'No one else in the audience... yet.';
+    const cards = Game.story.previously.map((t) => t.replace('{frames}', String(save.frames.length)).replace('{friends}', friends));
+    scene.scene.start('Intertitle', { cards, next: 'Bijou' });
+    return;
+  }
+  scene.scene.start('Bijou');
+}
+
 export class TitleScene extends Phaser.Scene {
   private conductor!: Conductor;
   private song!: PlaceholderSong;
   private tick!: Player;
   private scenery!: Scenery;
   private input2!: Input;
-  private diffText!: Phaser.GameObjects.Text;
-  private items: Phaser.GameObjects.Text[] = [];
-  private calInfo!: Phaser.GameObjects.Text;
+  private menu!: Menu;
   private logo!: Phaser.GameObjects.Text;
   private leaving = false;
-  /** 0 = PLAY, 1 = CALIBRATE */
-  private sel = 0;
+  private select = '';
 
   constructor() {
     super('Title');
   }
 
   init(data: { select?: string }): void {
-    this.sel = data?.select === 'calibrate' ? 1 : 0;
+    this.select = data?.select ?? '';
   }
 
   create(): void {
@@ -69,28 +93,28 @@ export class TitleScene extends Phaser.Scene {
       .setDepth(31);
     this.add.text(640, 258, 'a rhythm chase in glorious black & white', { fontFamily: 'Limelight, Georgia, serif', fontSize: '22px', color: '#cfc8b8' }).setOrigin(0.5).setDepth(31);
 
-    const itemStyle = { fontFamily: 'Rye, Georgia, serif', fontSize: '44px', color: '#f4efe4', stroke: '#141414', strokeThickness: 9 };
-    this.items = [
-      this.add.text(640, 326, 'PLAY', itemStyle).setOrigin(0.5).setDepth(31),
-      this.add.text(640, 418, 'CALIBRATE', itemStyle).setOrigin(0.5).setDepth(31),
-    ];
-    this.diffText = this.add
-      .text(640, 371, '', { fontFamily: 'Limelight, Georgia, serif', fontSize: '30px', color: '#f4efe4', stroke: '#141414', strokeThickness: 6 })
-      .setOrigin(0.5)
-      .setDepth(31);
+    const last = Game.settings.lastSlot ? loadSave(Game.settings.lastSlot) : null;
+    const anySave = SLOTS.some((sl) => loadSave(sl));
     const o = (ms: number): string => `${ms > 0 ? '+' : ''}${ms} ms`;
-    this.calInfo = this.add
-      .text(640, 454, `picture ${o(Game.audioOffsetMs)}  ·  keys ${o(Game.inputOffsetMs)}`, {
-        fontFamily: 'Limelight, Georgia, serif',
-        fontSize: '20px',
-        color: '#cfc8b8',
-        stroke: '#141414',
-        strokeThickness: 4,
-      })
-      .setOrigin(0.5)
-      .setDepth(31);
+    this.menu = new Menu(this, [
+      { label: 'CONTINUE', enabled: () => !!last, sub: () => (last ? saveSummary(last) : ''), select: () => this.leave(() => continueGame(this, last!)) },
+      { label: 'NEW GAME', select: () => this.leave(() => this.scene.start('Slot', { mode: 'new' })) },
+      { label: 'LOAD GAME', enabled: () => anySave, select: () => this.leave(() => this.scene.start('Slot', { mode: 'load' })) },
+      {
+        label: 'PROGRAMME',
+        enabled: () => !!last,
+        select: () => this.leave(() => {
+          Game.save = last;
+          this.scene.start('Programme', { back: 'Title' });
+        }),
+      },
+      { label: 'OPTIONS', select: () => this.leave(() => this.scene.start('Options', { back: 'Title' })) },
+      { label: 'CALIBRATE', sub: () => `picture ${o(Game.audioOffsetMs)}  ·  keys ${o(Game.inputOffsetMs)}`, select: () => this.leave(() => this.scene.start('Calibrate')) },
+    ], { y: 322, spacing: 56, size: 34 });
+    if (this.select === 'calibrate') this.menu.sel = 5;
+    if (this.select === 'options') this.menu.sel = 4;
     this.add
-      .text(640, 700, '↑/↓ choose · ←/→ difficulty · Enter start   |   Arrows / WASD move · Z / Space jump · Shift dash · Esc pause', {
+      .text(640, 700, '↑/↓ choose · Enter select   |   Arrows / WASD move · Z / Space jump · Shift dash · Esc pause', {
         fontFamily: 'Limelight, Georgia, serif',
         fontSize: '18px',
         color: '#f4efe4',
@@ -99,9 +123,8 @@ export class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(31);
-    this.refreshDiff();
 
-    this.tick = new Player(this, 640, 600, Game.config.player);
+    this.tick = new Player(this, 1090, 600, Game.config.player);
     addFilm(this, 'bw1928');
     this.input2 = new Input(this, Game.controls);
 
@@ -117,9 +140,12 @@ export class TitleScene extends Phaser.Scene {
     this.song.start(0);
   }
 
-  private refreshDiff(): void {
-    const label = Game.diff.label;
-    this.diffText.setText(`<  ${label}  >`);
+  private leave(go: () => void): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.song.stop();
+    this.cameras.main.fadeOut(400, 11, 11, 11);
+    this.time.delayedCall(420, go);
   }
 
   update(_t: number, delta: number): void {
@@ -136,44 +162,6 @@ export class TitleScene extends Phaser.Scene {
     this.logo.setScale(1 + Math.pow(1 - ph, 4) * 0.04);
     this.logo.setAngle(Math.sin(beat * Math.PI) * 1.5);
 
-    // selected item pulses on the beat, the other one is dimmed
-    this.items.forEach((it, idx) => {
-      const on = idx === this.sel;
-      it.setAlpha(on ? 1 : 0.4);
-      it.setScale(on ? 1 + Math.pow(1 - ph, 3) * 0.08 : 0.85);
-    });
-    this.diffText.setAlpha(this.sel === 0 ? 1 : 0.4);
-    this.calInfo.setAlpha(this.sel === 1 ? 1 : 0.5);
-
-    if (this.leaving) return;
-    if (this.input2.consume('up') !== null || this.input2.consume('down') !== null) {
-      this.sel = 1 - this.sel;
-      sfx('select');
-    }
-    this.input2.consume('jump'); // W/↑ are also jump keys: don't let them pile up
-    const names = Game.difficultyNames();
-    const i = names.indexOf(Game.difficulty);
-    if (this.sel !== 0) {
-      this.input2.consume('left');
-      this.input2.consume('right');
-    }
-    if (this.input2.consume('left') !== null) {
-      Game.difficulty = names[(i - 1 + names.length) % names.length];
-      sfx('select');
-      this.refreshDiff();
-    }
-    if (this.input2.consume('right') !== null) {
-      Game.difficulty = names[(i + 1) % names.length];
-      sfx('select');
-      this.refreshDiff();
-    }
-    if (this.input2.consume('confirm') !== null) {
-      this.leaving = true;
-      sfx('select');
-      this.song.stop();
-      this.cameras.main.fadeOut(400, 11, 11, 11);
-      if (this.sel === 1) this.time.delayedCall(420, () => this.scene.start('Calibrate'));
-      else this.time.delayedCall(420, () => this.scene.start('TitleCard', { levelId: Game.config.levels[0] }));
-    }
+    if (!this.leaving) this.menu.update(this.input2, ph);
   }
 }

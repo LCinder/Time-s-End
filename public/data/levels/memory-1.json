@@ -1,0 +1,88 @@
+{
+  "id": "memory-1",
+  "type": "platform",
+  "kind": "memory",
+  "title": "A MEMORY",
+  "subtitle": "The Station, 1912",
+  "era": "bw1928",
+  "music": {
+    "bpm": 88,
+    "beatsPerBar": 3,
+    "placeholder": {
+      "key": "Eb",
+      "swing": 0.5,
+      "sections": [
+        {
+          "name": "a",
+          "bars": 16,
+          "chords": [
+            "I",
+            "vi",
+            "ii",
+            "V7",
+            "I",
+            "IV",
+            "V7",
+            "I"
+          ],
+          "intensity": 1
+        },
+        {
+          "name": "b",
+          "bars": 16,
+          "chords": [
+            "vi",
+            "iii",
+            "IV",
+            "I",
+            "ii",
+            "V7",
+            "I",
+            "I"
+          ],
+          "intensity": 1
+        }
+      ]
+    }
+  },
+  "intro": [
+    "A memory.",
+    "Spring, 1912."
+  ],
+  "texts": [
+    "Elias was nineteen, and always a little late.",
+    "He had a ticket for the 11:59 to the city.",
+    "Someone he loved was leaving on that train.",
+    "He ran...",
+    "...and ran."
+  ],
+  "lostObject": {
+    "id": "ticket-1912",
+    "name": "A train ticket, never used",
+    "text": "Platform 3. The 11:59 to the city.\nElias was one minute late."
+  },
+  "outro": [
+    "The train left without him.",
+    "He kept the ticket all his life."
+  ],
+  "map": [
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                                                                                                                                      ",
+    "                                          *                                                                                                           ",
+    "                                                                                                                                                      ",
+    "                                         bbb                                                                                                          ",
+    "                  *                                                         ##                    *                                                   ",
+    "                                    aaa                                     ##    *                                                                   ",
+    "                  #                                                         ##                                                          O         E   ",
+    "              ##  #                                M                        ##                   ==             ######################################",
+    "   P    T     ##  #             T              C              T         V   ##        T   C             T       ######################################",
+    "#########################   #######################       ######################################    ##################################################",
+    "#########################   #######################       ######################################    ##################################################",
+    "#########################   #######################       ######################################    ##################################################"
+  ]
+}

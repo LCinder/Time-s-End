@@ -3,6 +3,7 @@
 //
 // Routing:  music ─► darkFilter ─┐
 //           sfx ─────────────────┼─► vintage (HP + LP + soft clip) ─► master ─► speakers
+//  (music and voice also pass a "silence" gate: the silence solos, MAIN.md idea 9)
 //           crackle ─────────────┘
 
 export class AudioEngine {
@@ -14,9 +15,15 @@ export class AudioEngine {
   readonly sfx: GainNode;
   readonly voice: GainNode;
   private readonly darkFilter: BiquadFilterNode;
+  private readonly silenceGate: GainNode;
   private readonly vintageIn: GainNode;
   private readonly crackleGain: GainNode;
   readonly noise: AudioBuffer;
+
+  /** True once the context exists (it is created on the first user gesture). */
+  static ready(): boolean {
+    return AudioEngine.instance !== null;
+  }
 
   static get(): AudioEngine {
     if (!AudioEngine.instance) AudioEngine.instance = new AudioEngine();
@@ -47,10 +54,12 @@ export class AudioEngine {
     this.darkFilter.frequency.value = 18000;
     this.darkFilter.connect(this.vintageIn);
 
+    this.silenceGate = ctx.createGain();
+    this.silenceGate.connect(this.darkFilter);
     this.music = ctx.createGain();
-    this.music.connect(this.darkFilter);
+    this.music.connect(this.silenceGate);
     this.voice = ctx.createGain();
-    this.voice.connect(this.darkFilter);
+    this.voice.connect(this.silenceGate);
     this.sfx = ctx.createGain();
     this.sfx.connect(this.vintageIn);
 
@@ -87,6 +96,20 @@ export class AudioEngine {
   setDark(amount: number): void {
     const f = 18000 * Math.pow(700 / 18000, Math.max(0, Math.min(1, amount)));
     this.darkFilter.frequency.setTargetAtTime(f, this.ctx.currentTime, 0.08);
+  }
+
+  /** Silence the band (music + voice) between two scheduler times, with short fades. */
+  silence(fromCtx: number, toCtx: number): void {
+    const g = this.silenceGate.gain;
+    g.setTargetAtTime(0, fromCtx, 0.03);
+    g.setTargetAtTime(1, toCtx, 0.03);
+  }
+
+  /** Bring the band back immediately (restart / quit during a silence). */
+  unsilence(): void {
+    const g = this.silenceGate.gain;
+    g.cancelScheduledValues(this.ctx.currentTime);
+    g.setTargetAtTime(1, this.ctx.currentTime, 0.02);
   }
 
   /** Seconds between ctx.currentTime and the moment that sound reaches the ears. */

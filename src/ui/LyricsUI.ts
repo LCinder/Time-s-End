@@ -19,14 +19,17 @@ export class LyricsUI {
   private ballShadow: Phaser.GameObjects.Ellipse;
   private band: Phaser.GameObjects.Graphics;
 
-  constructor(private scene: Phaser.Scene, private lines: ExpandedLine[], private y: number) {
+  /** `fixed`: stay on screen when the camera scrolls (platform levels). */
+  constructor(private scene: Phaser.Scene, private lines: ExpandedLine[], private y: number, private fixed = false) {
     this.band = scene.add.graphics().setDepth(89);
     this.ball = scene.add.image(-100, -100, 'ball_0').setDepth(91);
     this.ballShadow = scene.add.ellipse(-100, -100, 18, 5, 0x000000, 0.4).setDepth(90);
+    if (fixed) for (const o of [this.band, this.ball, this.ballShadow]) o.setScrollFactor(0);
   }
 
   private build(line: ExpandedLine): LineView {
     const c = this.scene.add.container(640, this.y).setDepth(90);
+    if (this.fixed) c.setScrollFactor(0, 0, true);
     const items: LineView['words'] = [];
     let x = 0;
     const gap = 12;
@@ -54,6 +57,16 @@ export class LyricsUI {
       it.top = -it.text.height / 2;
     }
     return { line, container: c, words: items };
+  }
+
+  private hidden = false;
+
+  /** Silence solos hide the sing-along: only Tick's pendulum keeps the beat. */
+  setHidden(h: boolean): void {
+    if (h === this.hidden) return;
+    this.hidden = h;
+    const a = h ? 0 : 1;
+    this.scene.tweens.add({ targets: [this.band, this.ball, this.ballShadow, ...this.views.map((v) => v.container)], alpha: a, duration: 200 });
   }
 
   update(beat: number, time: number): void {

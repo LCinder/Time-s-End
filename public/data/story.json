@@ -1,0 +1,35 @@
+{
+  "secondsPerBoss": 7,
+  "intro": [
+    "The Bijou Picture Palace closed its doors many years ago.",
+    "But every night, Elias the projectionist came back...\nand ran the pictures for an empty house.",
+    "One night, he didn't come back.",
+    "His old pocket watch stayed behind in the projection booth...",
+    "...and stopped at one minute to midnight.",
+    "11:59"
+  ],
+  "previously": [
+    "Previously at the Bijou...",
+    "Tick woke up alone in an empty picture palace, stopped at 11:59.",
+    "{frames} frames of film found. {friends}",
+    "And now..."
+  ],
+  "chapters": [
+    {
+      "id": "ch1",
+      "feature": "smokestack",
+      "framesNeeded": 12,
+      "nowShowing": "FULL STEAM AHEAD",
+      "comingSoon": "MISS PIROUETTE",
+      "interludes": ["newsreel-1", "serial-1", "singalong-1", "memory-1"],
+      "minigameFrames": 2,
+      "organGift": "train",
+      "endCards": [
+        "Old Smokestack got his ending at last.",
+        "Somewhere in the lost and found, a music box began to play...",
+        "END OF CHAPTER ONE",
+        "To be continued..."
+      ]
+    }
+  ]
+}

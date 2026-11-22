@@ -1,0 +1,91 @@
+{
+  "id": "singalong-1",
+  "type": "platform",
+  "kind": "singalong",
+  "title": "FOLLOW THE BOUNCING BALL",
+  "subtitle": "A Bijou Sing-Along",
+  "era": "bw1928",
+  "music": {
+    "bpm": 100,
+    "beatsPerBar": 4,
+    "voice": true,
+    "placeholder": {
+      "key": "F",
+      "swing": 0.62,
+      "sections": [
+        {
+          "name": "intro",
+          "bars": 2,
+          "chords": [
+            "I",
+            "V7"
+          ],
+          "intensity": 2
+        },
+        {
+          "name": "verse",
+          "bars": 16,
+          "chords": [
+            "I",
+            "VI7",
+            "II7",
+            "V7",
+            "I",
+            "I7",
+            "IV",
+            "iv",
+            "I",
+            "VI7",
+            "II7",
+            "V7",
+            "I",
+            "V7",
+            "I",
+            "I"
+          ],
+          "intensity": 2
+        },
+        {
+          "name": "outro",
+          "bars": 2,
+          "chords": [
+            "I",
+            "I"
+          ],
+          "intensity": 1
+        }
+      ]
+    }
+  },
+  "wordLifeBeats": 8,
+  "lyrics": [
+    {"beat": 8, "text": "Oh the ^PICTURES are a-playing and the ^ORGAN starts to hum,", "at": [0.0, 0.75, 1.25, 2.0, 2.5, 3.25, 3.75, 4.5, 5.0, 5.75, 6.25]},
+    {"beat": 16, "text": "So take a seat and ^FOLLOW where the ^BOUNCING ball will come!", "at": [0.0, 0.5, 1.25, 1.75, 2.25, 3.0, 3.5, 4.0, 4.75, 5.25, 5.75, 6.5]},
+    {"beat": 24, "text": "Just ^HOP upon the words, my friend, and ^SING along with me,", "at": [0.0, 0.5, 1.25, 1.75, 2.25, 3.0, 3.5, 4.0, 4.75, 5.25, 5.75, 6.5]},
+    {"beat": 32, "text": "The ^CLOCK may say it's late, but late's the ^BEST time there can be!", "at": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]},
+    {"beat": 40, "text": "Oh the ^SEATS are all so empty and the ^AISLES are full of dust,", "at": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]},
+    {"beat": 48, "text": "But a ^SONG is like a ^LANTERN, and you sing it 'cause you must!", "at": [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5]},
+    {"beat": 56, "text": "So ^TICK along and ^TOCK along, the ^REEL is spinning round,", "at": [0.0, 0.75, 1.25, 2.0, 2.5, 3.25, 3.75, 4.5, 5.0, 5.75, 6.25]},
+    {"beat": 64, "text": "And ^NOBODY is lonely when the ^MUSIC makes a sound!", "at": [0.0, 0.75, 1.5, 2.0, 2.75, 3.5, 4.25, 5.0, 5.5, 6.25]}
+  ],
+  "map": [
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                                                                                            ",
+    "                                                                              *                                          *                  ",
+    "                                                                                                                                            ",
+    "                             *                 *                                                       *                                    ",
+    "                                   W                                          W                                          W                  ",
+    "                       W                 W           C            W                 W           C            W                 W            ",
+    "                 W           W                 W    ====    W           W                 W    ====    W           W                        ",
+    "   P   C                                                                                                                                E   ",
+    "#############                                                                                                                        #######",
+    "#############                                                                                                                        #######",
+    "#############                                                                                                                        #######"
+  ]
+}

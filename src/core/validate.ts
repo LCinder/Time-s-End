@@ -8,6 +8,8 @@ import type {
   LevelData,
   LevelEvent,
   LyricLine,
+  PlatformLevel,
+  StoryData,
 } from './types';
 import { resolveAnchor, songWords } from './anchors';
 import { ERA_PALETTES } from './types';
@@ -52,9 +54,11 @@ class Checker {
       this.problems.push(`${path}.${key}: "${v}" is not valid. Use one of: ${opts.oneOf.join(', ')}`);
     }
   }
-  bool(o: Obj, key: string, path: string): void {
-    if (typeof o[key] !== 'boolean') this.problems.push(`${path}.${key}: expected true/false`);
+  bool(o: Obj, key: string, path: string, opts: { optional?: boolean } = {}): void {
+    if (opts.optional && o[key] === undefined) return;
+    if (typeof o[key] !== 'boolean') this.problems.push(`${path}.${key}: expected true or false`);
   }
+
   arr(o: Obj, key: string, path: string, optional = false): unknown[] | null {
     const v = o[key];
     if (v === undefined && optional) return null;
@@ -145,6 +149,8 @@ export const EVENT_SCHEMAS: Record<string, { required: string[]; optional: strin
   sign: { required: ['text'], optional: ['x'], help: 'Road sign standing at screen X (default 1100) on `beat`.' },
   bossFall: { required: [], optional: ['crashBeat'], help: 'Final gag: the boss runs off the next gap, keeps running on thin air, notices, waves goodbye and crashes on `crashBeat` (default beat + 4).' },
   shake: { required: [], optional: ['intensity', 'durationBeats'], help: 'Camera shake.' },
+  cue: { required: [], optional: [], help: 'Cue mark (checkpoint): after losing, the player can rewind to the last one passed.' },
+  silence: { required: ['lengthBeats'], optional: [], help: 'Silence solo: the band stops for `lengthBeats`; only the ticking and the hazards keep the beat.' },
 };
 
 export function validateLevel(raw: unknown, file: string): LevelData {
@@ -267,3 +273,118 @@ export function validateLevel(raw: unknown, file: string): LevelData {
   level.events = [...level.events].sort((a, b) => a.beat - b.beat) as LevelEvent[];
   return level;
 }
+
+// ───────────────────────── platform levels (MAIN.md §11.6) ─────────────────────────
+
+/** Tile legend of the ASCII maps. */
+export const TILE_LEGEND: Record<string, string> = {
+  ' ': 'empty',
+  '.': 'empty',
+  '#': 'solid block',
+  '=': 'plank (jump up through it)',
+  a: 'beat plank, group A (there on beats 1-2 of every bar, gone on 3-4)',
+  b: 'beat plank, group B (the opposite of A)',
+  M: 'platform moving left-right (3 tiles wide)',
+  V: 'platform moving up-down (3 tiles wide)',
+  '^': 'spikes',
+  S: 'stomper: slams down on every other beat',
+  B: 'sandbag: drops on the first beat of every bar',
+  '*': 'film frame (collectible)',
+  C: 'cue mark (checkpoint)',
+  E: 'exit',
+  O: 'lost object',
+  T: 'text trigger (next entry of "texts")',
+  W: 'word platform (next SHOUTED word of the lyrics)',
+  P: 'player start',
+  R: 'runaway reel start (serial)',
+};
+
+export function validatePlatformLevel(raw: unknown, file: string): PlatformLevel {
+  const c = new Checker(file);
+  const o = c.obj(raw, 'level');
+  if (o) {
+    c.str(o, 'id', 'level');
+    c.str(o, 'type', 'level', { oneOf: ['platform'] });
+    c.str(o, 'kind', 'level', { oneOf: ['newsreel', 'serial', 'singalong', 'memory'] });
+    c.str(o, 'title', 'level');
+    c.str(o, 'subtitle', 'level');
+    c.str(o, 'era', 'level', { oneOf: ERA_PALETTES });
+    c.num(o, 'autoscroll', 'level', { optional: true, min: 0, max: 600 });
+    c.num(o, 'wordLifeBeats', 'level', { optional: true, min: 1, max: 32 });
+    const m = c.obj(o.music, 'level.music');
+    if (m) {
+      c.num(m, 'bpm', 'level.music', { min: 40, max: 240 });
+      c.num(m, 'beatsPerBar', 'level.music', { min: 2, max: 8 });
+      c.bool(m, 'voice', 'level.music', { optional: true });
+      const pm = c.obj(m.placeholder, 'level.music.placeholder');
+      if (pm) {
+        c.str(pm, 'key', 'level.music.placeholder');
+        c.num(pm, 'swing', 'level.music.placeholder', { min: 0.5, max: 0.75 });
+        const secs = c.arr(pm, 'sections', 'level.music.placeholder');
+        if (secs && !secs.length) c.problems.push('level.music.placeholder.sections: needs at least one section');
+      }
+    }
+    for (const k of ['texts', 'intro', 'outro']) {
+      const a = c.arr(o, k, 'level', true);
+      if (a && a.some((x) => typeof x !== 'string')) c.problems.push(`level.${k}: every entry must be text`);
+    }
+    const map = c.arr(o, 'map', 'level');
+    if (map) {
+      const rows = map as unknown[];
+      if (rows.some((r) => typeof r !== 'string')) c.problems.push('level.map: every row must be text');
+      else {
+        const lines = rows as string[];
+        if (lines.length < 18) c.problems.push(`level.map: needs at least 18 rows (one screen), has ${lines.length}`);
+        const w = lines[0]?.length ?? 0;
+        lines.forEach((r, i) => {
+          if (r.length !== w) c.problems.push(`level.map[${i}]: is ${r.length} tiles wide, the first row is ${w} (all rows must be the same width)`);
+          for (const ch of r) if (!(ch in TILE_LEGEND)) c.problems.push(`level.map[${i}]: unknown tile "${ch}". Known: ${Object.keys(TILE_LEGEND).join(' ')}`);
+        });
+        const count = (ch: string): number => lines.reduce((n, r) => n + r.split(ch).length - 1, 0);
+        if (count('P') !== 1) c.problems.push(`level.map: needs exactly one P (player start), has ${count('P')}`);
+        if (count('E') < 1) c.problems.push('level.map: needs an E (exit)');
+        const texts = Array.isArray(o.texts) ? o.texts.length : 0;
+        if (count('T') > texts) c.problems.push(`level.map: has ${count('T')} T tiles but only ${texts} "texts"`);
+        if (count('O') > 0 && !o.lostObject) c.problems.push('level.map: has an O tile but no "lostObject"');
+        if (o.kind === 'serial' && count('R') !== 1) c.problems.push('level.map: a serial needs exactly one R (the runaway reel)');
+        if (o.kind === 'singalong') {
+          const lyrics = Array.isArray(o.lyrics) ? (o.lyrics as LyricLine[]) : [];
+          const shouted = lyrics.reduce((n, l) => n + (typeof l.text === 'string' ? l.text.split(/\s+/).filter((w) => w.startsWith('^')).length : 0), 0);
+          if (!lyrics.length) c.problems.push('level.lyrics: a sing-along needs lyrics');
+          if (count('W') !== shouted) c.problems.push(`level.map: has ${count('W')} W tiles but the lyrics have ${shouted} ^SHOUTED words (one W per shouted word)`);
+        }
+      }
+    }
+    if (o.lostObject !== undefined) {
+      const lo = c.obj(o.lostObject, 'level.lostObject');
+      if (lo) for (const k of ['id', 'name', 'text']) c.str(lo, k, 'level.lostObject');
+    }
+  }
+  c.done();
+  return raw as PlatformLevel;
+}
+
+export function validateStory(raw: unknown, file: string): StoryData {
+  const c = new Checker(file);
+  const o = c.obj(raw, 'story');
+  if (o) {
+    c.num(o, 'secondsPerBoss', 'story', { min: 1, max: 59 });
+    for (const k of ['intro', 'previously']) c.arr(o, k, 'story');
+    const chs = c.arr(o, 'chapters', 'story');
+    if (chs && !chs.length) c.problems.push('story.chapters: needs at least one chapter');
+    chs?.forEach((ch, i) => {
+      const p = `story.chapters[${i}]`;
+      const co = c.obj(ch, p);
+      if (!co) return;
+      for (const k of ['id', 'feature', 'nowShowing', 'comingSoon']) c.str(co, k, p);
+      c.num(co, 'framesNeeded', p, { min: 0 });
+      c.num(co, 'minigameFrames', p, { min: 0, max: 5 });
+      c.str(co, 'organGift', p, { oneOf: ['train', 'none'] });
+      c.arr(co, 'interludes', p);
+      c.arr(co, 'endCards', p);
+    });
+  }
+  c.done();
+  return raw as StoryData;
+}
+

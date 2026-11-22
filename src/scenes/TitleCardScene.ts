@@ -9,6 +9,7 @@ import { addFilm } from '../fx/FilmPipeline';
 export class TitleCardScene extends Phaser.Scene {
   private rays!: Phaser.GameObjects.Graphics;
   private levelId = 'smokestack';
+  private cue = 0;
   private input2!: Input;
   private done = false;
   private clickTimer = 0;
@@ -17,12 +18,15 @@ export class TitleCardScene extends Phaser.Scene {
     super('TitleCard');
   }
 
-  init(data: { levelId: string }): void {
+  init(data: { levelId: string; cue?: number }): void {
     this.levelId = data.levelId;
+    this.cue = data.cue ?? 0;
     this.done = false;
   }
 
   create(): void {
+    const P = Game.platformLevels[this.levelId];
+    if (P) return this.platformCard();
     const L = Game.levels[this.levelId];
     this.cameras.main.setBackgroundColor('#2a2824');
     this.rays = this.add.graphics();
@@ -63,7 +67,36 @@ export class TitleCardScene extends Phaser.Scene {
     if (this.done) return;
     this.done = true;
     this.cameras.main.fadeOut(300, 11, 11, 11);
-    this.time.delayedCall(320, () => this.scene.start('Chase', { levelId: this.levelId }));
+    const target = Game.platformLevels[this.levelId] ? 'Platform' : 'Chase';
+    this.time.delayedCall(320, () => this.scene.start(target, { levelId: this.levelId, cue: this.cue }));
+  }
+
+  /** Cards for the levels between bosses: each piece of the cinema programme has its own look. */
+  private platformCard(): void {
+    const P = Game.platformLevels[this.levelId];
+    this.cameras.main.setBackgroundColor(P.kind === 'newsreel' ? '#3a3732' : '#141414');
+    this.rays = this.add.graphics();
+    const frame = this.add.graphics();
+    const txt = (y: number, s: string, size: number, font = 'Limelight', color = '#f4efe4'): Phaser.GameObjects.Text =>
+      this.add.text(640, y, s, { fontFamily: `${font}, Georgia, serif`, fontSize: `${size}px`, color, align: 'center', wordWrap: { width: 900 } }).setOrigin(0.5);
+    const top = { newsreel: 'THE BIJOU PRESENTS', serial: 'A THRILLING SERIAL IN TWELVE CHAPTERS', singalong: 'A BIJOU SING-ALONG', memory: '' }[P.kind];
+    if (P.kind === 'newsreel') {
+      frame.fillStyle(0xe8e1d0, 1).fillRect(190, 120, 900, 480);
+      frame.lineStyle(6, 0x141414, 1).strokeRect(205, 135, 870, 450);
+      txt(200, top, 26, 'Limelight', '#141414');
+      txt(320, P.title, 96, 'Rye', '#141414');
+      txt(440, `"${P.subtitle}"`, 36, 'Limelight', '#141414');
+    } else {
+      frame.lineStyle(6, 0xf4efe4, 1).strokeRoundedRect(190, 120, 900, 480, 30);
+      frame.lineStyle(2, 0xf4efe4, 1).strokeRoundedRect(206, 136, 868, 448, 22);
+      if (top) txt(200, top, 24, 'Limelight', '#cfc8b8');
+      txt(320, P.title, P.title.length > 18 ? 66 : 86, 'Rye');
+      txt(440, P.subtitle, 36);
+    }
+    if (this.cue > 0) txt(540, 'resuming from the last cue mark', 22, 'Limelight', P.kind === 'newsreel' ? '#3a3732' : '#8a857a');
+    addFilm(this, P.era);
+    this.input2 = new Input(this, Game.controls);
+    this.time.delayedCall(3200, () => this.go());
   }
 
   update(_t: number, delta: number): void {
@@ -78,6 +111,7 @@ export class TitleCardScene extends Phaser.Scene {
     }
     const g = this.rays;
     g.clear();
+    if (Game.platformLevels[this.levelId]) return;
     g.fillStyle(0x3a3732, 1);
     const n = 24;
     for (let i = 0; i < n; i += 2) {

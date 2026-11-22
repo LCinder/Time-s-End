@@ -48,6 +48,8 @@ export class Smokestack {
   blink = 0;
   /** Screen point the eyes look at (Tick). */
   lookTarget = { x: 800, y: 540 };
+  /** Overall drawing scale (1 in the chase; small when he sits in the Bijou). */
+  size = 1;
 
   // ── internal animation
   private lean = 0;
@@ -135,7 +137,7 @@ export class Smokestack {
     this.gfx.setPosition(this.screenX + shake, this.groundY + (airborne ? 0 : chug + laughBob) + this.fallY);
     this.gfx.setRotation(this.tilt + (airborne ? 0 : Math.sin(beat * Math.PI) * 0.008));
     const stretch = 1 + Math.pow(1 - phase, 3) * 0.035;
-    this.gfx.setScale(1 / Math.sqrt(stretch), stretch);
+    this.gfx.setScale(this.size / Math.sqrt(stretch), this.size * stretch);
 
     // hand-drawn redraw on twos (12 fps)
     this.drawTimer -= dt;

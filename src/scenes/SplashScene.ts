@@ -36,9 +36,10 @@ export class SplashScene extends Phaser.Scene {
       started = true;
       const e = AudioEngine.get();
       await e.resume();
-      e.configure({ master: Game.config.masterVolume, music: Game.config.musicVolume, sfx: Game.config.sfxVolume, vintage: Game.config.vintageAudio });
+      e.configure({ master: Game.config.masterVolume, music: Game.settings.music, sfx: Game.settings.sfx, vintage: Game.config.vintageAudio });
       sfx('select');
       if (this.skipTo && Game.levels[this.skipTo]) this.scene.start('Chase', { levelId: this.skipTo });
+      else if (this.skipTo && Game.platformLevels[this.skipTo]) this.scene.start('Platform', { levelId: this.skipTo });
       else this.scene.start('Title');
     };
     this.input.keyboard?.once('keydown', go);

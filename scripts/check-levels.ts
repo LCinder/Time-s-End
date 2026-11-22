@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { checkLevel, formatIssue } from '../src/core/levelCheck';
-import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel } from '../src/core/validate';
+import { checkPlatformMap } from '../src/core/mapCheck';
+import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../src/core/validate';
 
 const root = resolve(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');
@@ -49,6 +50,45 @@ try {
     warnings += w;
     console.log(`\n${rel}: ${level.events.length} events, ${e} error(s), ${w} warning(s)`);
     for (const i of issues) if (!quiet || i.level === 'error') console.log('  ' + formatIssue(i));
+  }
+
+  // the story (chapters) and the platform levels between bosses
+  const story = validateStory(read('data/story.json'), 'data/story.json');
+  console.log(`\ndata/story.json: ${story.chapters.length} chapter(s) OK`);
+  for (const ch of story.chapters) {
+    if (!game.levels.includes(ch.feature)) {
+      console.log(`  ERROR  chapter ${ch.id}: feature "${ch.feature}" is not in game.json "levels"`);
+      errors++;
+    }
+    for (const id of ch.interludes.filter((l) => !only || l === only)) {
+      const rel = `data/levels/${id}.json`;
+      try {
+        const P = validatePlatformLevel(read(rel), rel);
+        const issues = checkPlatformMap(P, game.player);
+        const e = issues.filter((i) => i.level === 'error').length;
+        errors += e;
+        warnings += issues.length - e;
+        const frames = P.map.join('').split('*').length - 1;
+        console.log(`${rel}: ${P.kind}, ${P.map[0].length}x${P.map.length} tiles, ${frames} frames, ${e} error(s), ${issues.length - e} warning(s)`);
+        for (const i of issues) if (!quiet || i.level === 'error') console.log(`  ${i.level === 'error' ? 'ERROR  ' : 'warning'}  ${i.type.padEnd(11)} ${i.message}`);
+      } catch (err) {
+        if (!(err instanceof DataError)) throw err;
+        console.log(`${rel}: INVALID`);
+        err.problems.forEach((p) => console.log(`  ERROR  ${p}`));
+        errors += err.problems.length;
+      }
+    }
+    const total = ch.interludes.reduce((n, id) => {
+      try {
+        return n + ((read(`data/levels/${id}.json`) as { map: string[] }).map.join('').split('*').length - 1);
+      } catch {
+        return n;
+      }
+    }, 3 + 2 * ch.minigameFrames); // + the Bijou rafters + minigames
+    if (total < ch.framesNeeded) {
+      console.log(`  ERROR  chapter ${ch.id}: needs ${ch.framesNeeded} frames but only ${total} exist`);
+      errors++;
+    } else console.log(`chapter ${ch.id}: ${total} frames to find, ${ch.framesNeeded} needed for the reel`);
   }
 } catch (err) {
   if (err instanceof DataError) {

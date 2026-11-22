@@ -91,6 +91,8 @@ export interface DifficultySpec {
   telegraphBeats: number;
   hazardSpeedMultiplier: number;
   bossLungeMultiplier: number;
+  /** Wind-up spring (MAIN.md idea 10); every field optional. */
+  spring?: Partial<{ drainPerBeat: number; perfect: number; good: number; hit: number; slowRate: number; slowBeats: number }>;
 }
 
 export interface PlayerTuning {
@@ -143,4 +145,64 @@ export interface ControlsConfig {
   dash: string[];
   pause: string[];
   confirm: string[];
+}
+
+// ───────────────────────── Chapter 1 structure (MAIN.md §6) ─────────────────────────
+
+export type PlatformKind = 'newsreel' | 'serial' | 'singalong' | 'memory';
+
+/** A level between bosses, drawn from an ASCII tile map (see MAIN.md §11.6). */
+export interface PlatformLevel {
+  id: string;
+  type: 'platform';
+  kind: PlatformKind;
+  title: string;
+  subtitle: string;
+  era: EraPalette;
+  music: {
+    bpm: number;
+    beatsPerBar: number;
+    /** The placeholder band sings the lyrics (sing-along). */
+    voice?: boolean;
+    placeholder: PlaceholderMusic;
+  };
+  /** Sing-along: lyric lines; the ^SHOUTED words become platforms at the W tiles. */
+  lyrics?: LyricLine[];
+  /** One string per row of 40 px tiles. Legend in MAIN.md §11.6. */
+  map: string[];
+  /** Newsreel: the camera scrolls this many px per beat. */
+  autoscroll?: number;
+  /** Texts shown when Tick passes each T tile (intertitles / headlines), in reading order. */
+  texts?: string[];
+  /** Cards before the level starts. */
+  intro?: string[];
+  /** Cards when the level ends ("To be continued…"). */
+  outro?: string[];
+  /** Found at the O tile and kept on Elias' desk. */
+  lostObject?: { id: string; name: string; text: string };
+  /** Sing-along: how many beats a word platform stays. */
+  wordLifeBeats?: number;
+}
+
+export interface StoryChapter {
+  id: string;
+  /** Level id of the boss (the feature). */
+  feature: string;
+  framesNeeded: number;
+  nowShowing: string;
+  comingSoon: string;
+  /** Platform level ids, in the order the posters / objects offer them. */
+  interludes: string[];
+  /** Frames each minigame can give (once per threshold). */
+  minigameFrames: number;
+  /** Instrument the freed boss gives the organ. */
+  organGift: 'train' | 'none';
+  endCards: string[];
+}
+
+export interface StoryData {
+  secondsPerBoss: number;
+  intro: string[];
+  previously: string[];
+  chapters: StoryChapter[];
 }

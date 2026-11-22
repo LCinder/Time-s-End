@@ -14,14 +14,16 @@ Abre `http://localhost:5173`. Para la versión publicable: `npm run build` (gene
 **Atajos para probar y diseñar** (parámetros en la URL):
 | URL | Efecto |
 |---|---|
-| `?level=smokestack` | Salta el menú y va directo al nivel |
+| `?level=smokestack` | Salta el menú y va directo al nivel (también `newsreel-1`, `serial-1`, `singalong-1`, `memory-1`) |
 | `?beat=200` | Empieza el nivel en ese beat (modo práctica) |
 | `?diff=hard` | Fuerza una dificultad |
 | `?debug=1` | Muestra el panel de depuración (beat, compás, próximos eventos…) |
 
 Ejemplo: `http://localhost:5173/?level=smokestack&beat=204&debug=1` empieza justo antes del túnel.
 
-**Teclas en partida:** `F1` muestra u oculta la depuración · `R` reinicia · `Esc` pausa.
+**Jugar el capítulo 1 completo:** en el título, **NEW GAME** → elige una lata de película → introducción → el Bijou. **CONTINUE** te devuelve a donde lo dejaste.
+
+**Teclas en partida:** `F1` muestra u oculta la depuración · `R` reinicia · `Esc` pausa. En el Bijou, `▲` mira y usa las cosas.
 Con la depuración visible, `[` / `]` (o `-` / `+`) mueven el desfase de audio ±5 ms en caliente; el valor se guarda como la calibración.
 
 **Calibración:** en el título, `↑/↓` elige entre **PLAY** y **CALIBRATE** (ver §10.1). Conviene calibrar una vez en cada ordenador (y cada vez que cambies de altavoces o auriculares, sobre todo si son Bluetooth).
@@ -141,11 +143,22 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 - La vida se representa con el **estado de la película** (idea 4). Base: 3 golpes, configurable.
 - Al morir, el reinicio es rápido, con el efecto de rebobinado.
 
-### 5.5 Mecánicas del tema (tiempo y soledad)
+### 5.5 Mecánicas del tema (tiempo y soledad) ✅ en Smokestack
 - **Solos de silencio** (idea 9): un evento de nivel, `silence`, corta la música durante unos compases (queda el tic-tac y, si acaso, un metrónomo muy bajo). Los peligros siguen en el beat. Las primeras veces se avisa con un cartel (*"Keep time!"*).
 - **La cuerda** (idea 10): no sustituye a la vida (la película). Es un medidor aparte: cada acción a tiempo da cuerda y los fallos o el tiempo la gastan. Con poca cuerda, el mundo va un poco más lento: la música baja de tono y velocidad unos segundos y los peligros se ajustan para que siga siendo justo. Se recupera enseguida acertando. Debe sentirse, no castigar: dificultad configurable en `difficulty.json`.
 - **El fantasma** (idea 11): se graba la posición de Tick en cada intento y, en el siguiente, se dibuja en translúcido. Se puede apagar en opciones.
-- **Oportunidades únicas** (Mister Too-Late, §7): objetos que aparecen **un solo beat**; si no los coges, se pierden para esa partida.
+- **Oportunidades únicas** (Mister Too-Late, §7): objetos que aparecen **un solo beat**; si no los coges, se pierden para esa partida. *(Pendiente: llega con su jefe.)*
+
+**Implementación (capítulo 1):**
+- **Solo de silencio:** evento `silence` en el JSON. En Smokestack está en el interludio tras el primer estribillo (beats 138–146). Tres beats antes avisa *"KEEP TIME!"*. Durante el solo se apaga la banda (una "puerta" de silencio en el audio) y la letra, y suena un tic-tac en cada beat.
+- **La cuerda:**
+  - Es la llave dorada que hay arriba a la derecha.
+  - Se gasta 0,006 por beat. Un PERFECT da +0,09, un GOOD +0,05 y un golpe resta −0,18.
+  - Vacía, la canción va al **85 % durante 4 beats** (baja de tono y los peligros también se ralentizan, porque todo va por beats), con el aviso *"WIND ME UP!"*. Después vuelve a 0,4.
+  - Se ajusta por dificultad con un bloque opcional `"spring": { "drainPerBeat", "perfect", "good", "hit", "slowRate", "slowBeats" }` en `difficulty.json`.
+  - Para ralentizar la canción entera, el Conductor admite tempo variable.
+- **El fantasma:** se graba la posición de Tick en cada beat. En el siguiente intento, un Tick translúcido repite el anterior. Se apaga en OPTIONS.
+- **Puntos de control:** eventos `cue` en el JSON. Smokestack tiene 6, en el inicio de cada sección. Al perder: ENTER rebobina al último, S al principio. Tras 3 derrotas en el mismo sitio se ofrece **REHEARSAL**: practicar ese tramo sin poder perder hasta el siguiente punto de control, y luego *"Now for real…"*.
 
 ---
 
@@ -167,7 +180,7 @@ Las ventanas de tiempo son configurables (por ejemplo *perfect* ±50 ms y *good*
 | **Memory** (entre jefes) | Plataformas tranquilas, estilo cine mudo | Un recuerdo de Elias, con intertítulos; al final, un objeto perdido. |
 | **Darkroom** (cambio de época) | Plataformas | En el cuarto de revelado, el color nuevo se filtra en el mundo a tu paso. |
 
-### 6.1 La sala central: el Bijou
+### 6.1 La sala central: el Bijou ✅ capítulo 1
 El cine es un **mundo que se recorre**, no un menú. Tick se mueve por él con los mismos controles que en los niveles, y todo baila al compás.
 
 **Zonas** (se abren a medida que avanza el reloj de las 11:59):
@@ -198,7 +211,7 @@ El cine es un **mundo que se recorre**, no un menú. Tick se mueve por él con l
 - **Los jefes liberados son los habitantes de la sala.** Están sentados en sus butacas, comentan, dan pistas o simplemente están. El arco de la soledad a la compañía se vive aquí.
 - **La marquesina** anuncia el siguiente estreno (*"NOW SHOWING: MISTER TOO-LATE"*).
 
-### 6.2 Entre jefes: la sesión de cine
+### 6.2 Entre jefes: la sesión de cine ✅ capítulo 1
 En los años 30 no se iba a ver una sola película: la sesión tenía **noticiario, corto, serial, a veces un corto para cantar y la película principal**. Cada capítulo del juego es una sesión completa, así el ritmo cambia constantemente y nunca es solo "entrar, jefe, repetir".
 
 | Pieza de la sesión | Nivel |
@@ -215,6 +228,17 @@ En los años 30 no se iba a ver una sola película: la sesión tenía **noticiar
 - **La bobina fugitiva:** persecución al revés por todo el cine; esta vez Tick persigue.
 - **Minijuegos de la sala** (cortos y opcionales): la máquina de palomitas (cada palomita salta en el beat), la taquilla y enhebrar el proyector.
 
+**Qué hay en el capítulo 1** (`public/data/story.json`):
+- **Las cuatro piezas de la sesión:**
+  - *BIJOU NEWS: The Bijou Closes Its Doors* (`newsreel-1`, con *scroll* automático y titulares que cuentan el cierre del cine).
+  - *THE RUNAWAY REEL, Chapter One* (`serial-1`): persigues a una bobina con ojos por los tejados, que se escapa en un tren. Es también "la bobina fugitiva".
+  - *FOLLOW THE BOUNCING BALL* (`singalong-1`): canción original en la que 17 palabras gritadas son las plataformas.
+  - *A MEMORY: The Station, 1912* (`memory-1`): Elias pierde el tren de las 11:59, y su billete sin usar queda sobre la mesa de la cabina.
+- **El edificio como nivel:** las vigas del techo, con tablones al ritmo, una viga móvil, sacos de arena y 3 fotogramas. Al llegar al final se suelta la escalera de cuerda, que queda como atajo.
+- **Minijuegos:** palomitas y taquilla (dan 2 fotogramas cada uno) y enhebrar el proyector (el ritual).
+- **Fotogramas:** hay 28 y la bobina necesita 12.
+- **Adelantos de capítulos futuros**, que se pueden mirar pero aún no se abren: el cuarto de revelado del sótano (Darkroom), el espejo del vestíbulo (The Echo), la caja de música de objetos perdidos (Miss Pirouette), el reloj de pie (Grandfather Pendulum) y la trampilla del tejado. *El nivel Darkroom llega con el primer cambio de época (capítulo 3).*
+
 **Un capítulo tipo**
 1. **Recorrido** por el edificio hasta la zona nueva.
 2. **Intermedio:** noticiario, capítulo del serial o corto para cantar. Se ganan fotogramas.
@@ -223,7 +247,7 @@ En los años 30 no se iba a ver una sola película: la sesión tenía **noticiar
 5. **El jefe** y su final.
 6. **De vuelta en la sala:** el jefe se sienta en su butaca, el órgano gana un instrumento, la aguja avanza y la estación cambia por la ventana.
 
-### 6.3 Guardar, volver y empezar rápido
+### 6.3 Guardar, volver y empezar rápido ✅
 **Principio:** nunca hay que repetir lo que ya has hecho para volver a lo que estabas haciendo. **Objetivo:** desde que abres el juego hasta que estás jugando lo que dejaste, menos de 10 segundos.
 
 **Guardado automático**
@@ -451,9 +475,16 @@ cartoon-rhythm-game/
     entities/   Player.ts (Tick), Smokestack.ts (jefe), hazards.ts (peligros)
     rig/        Ink.ts (trazo de tinta, extremidades de manguera, line boil)
     fx/         FilmPipeline.ts (shader de película), Textures.ts (texturas por código)
-    world/      Scenery.ts (fondo que baila), Track.ts (vías y huecos), Solids.ts
-    ui/         LyricsUI.ts (pelotita), Hud.ts
-    scenes/     Boot, Error, Splash, Title, TitleCard, Chase, Calibrate
+    world/      Scenery.ts (fondo que baila), Track.ts (vías y huecos), Solids.ts,
+                TileMap.ts (mapas ASCII de los niveles de plataformas)
+    hub/        HubLayout.ts (plano del Bijou y sus objetos), HubArt.ts (dibujo fijo),
+                HubMusic.ts (el órgano que gana instrumentos)
+    ui/         LyricsUI.ts (pelotita), Hud.ts, Cards.ts (intertítulos), Menu.ts
+    scenes/     Boot, Error, Splash, Title, TitleCard, Chase, Calibrate,
+                Bijou (la sala central), Platform (niveles entre jefes), Minigame,
+                Intertitle, MenuScenes (Resume, Slot, Programme, Options)
+    core/       … Save.ts (partidas y ajustes), flow.ts (entrar y salir de niveles),
+                mapCheck.ts (¿se puede terminar el mapa?)
   public/
     data/config/   game.json, difficulty.json, controls.json
     data/levels/   smokestack.json
@@ -562,6 +593,8 @@ Lista de teclas por acción (nombres de tecla de Phaser: `LEFT`, `A`, `SPACE`, `
 | `sign` | `text`, `x` (1100) | Cartel de madera en la vía |
 | `bossFall` | `crashBeat` (por defecto `beat` + 4) | Gag final: el jefe sigue corriendo en el aire sobre el abismo, se da cuenta, dice adiós con la mano y se estrella en `crashBeat` |
 | `shake` | `intensity` (0.01), `durationBeats` (1) | Sacudida de cámara |
+| `cue` | — | Punto de control: al perder se puede rebobinar al último que pasaste (§6.3) |
+| `silence` | `lengthBeats` | Solo de silencio: la banda calla durante `lengthBeats` y solo el tic-tac y los peligros marcan el beat (idea 9) |
 
 ### 11.5 Comprobador de niveles (`npm run check`)
 Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la consola del navegador.
@@ -579,6 +612,49 @@ Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la con
 - Los huecos cruzados sobre palabras-plataforma (el abismo final) no se juzgan como salto normal.
 - Aviso actual de Smokestack: la cuarta piedra "NO!" del abismo (beat 331.75) cae más de 2 beats después del último "no" cantado.
 
+### 11.6 `levels/<id>.json` de tipo `platform`: niveles entre jefes
+Se dibujan como un **mapa ASCII**: una cadena por fila de casillas de 40 px (al menos 18 filas, que es una pantalla; todas del mismo ancho).
+
+| Carácter | Qué es |
+|---|---|
+| `#` | Bloque sólido |
+| `=` | Tablón (se atraviesa saltando desde abajo) |
+| `a` / `b` | Tablones al ritmo: el grupo A está en los tiempos 1–2 de cada compás y el B en el 3–4. Parpadean medio beat antes de desaparecer |
+| `M` / `V` | Plataforma de 3 casillas que va y viene, en horizontal o en vertical (4 casillas en 8 beats) |
+| `^` | Pinchos |
+| `S` | Pisón "1 TON": cae en cada beat par y tiembla antes |
+| `B` | Saco de arena: cae en el primer tiempo de cada compás |
+| `*` | Fotograma |
+| `C` | Marca de cambio de bobina (punto de control) |
+| `T` | Muestra el siguiente texto de `texts` (titulares, intertítulos) |
+| `W` | Plataforma-palabra: la siguiente palabra ^GRITADA de la letra (sing-along) |
+| `O` | Objeto perdido (`lostObject`) |
+| `R` | La bobina fugitiva (serial) |
+| `P` / `E` | Salida de Tick / meta |
+
+**Campos:**
+- **Identidad:** `id`, `kind` (`newsreel`, `serial`, `singalong` o `memory`), `title`, `subtitle` y `era`.
+- **Música:** `music { bpm, beatsPerBar, voice, placeholder }`, con la banda provisional y, si `voice` es true, la voz que canta la letra.
+- **Opcionales:**
+  - `autoscroll`: px por beat; el noticiario usa 100;
+  - `lyrics`: para el sing-along;
+  - `texts`;
+  - `intro` y `outro`: tarjetas de cine mudo antes y después;
+  - `lostObject { id, name, text }`;
+  - `wordLifeBeats`.
+- **Comprobación:** `npm run check` valida el mapa y comprueba con la física real de Tick que la meta, los fotogramas, los puntos de control y el objeto perdido se pueden alcanzar.
+
+### 11.7 `story.json`: los capítulos
+- **Generales:** `secondsPerBoss` (segundos que avanza el reloj por cada jefe liberado: 7), `intro` (las tarjetas de NEW GAME) y `previously` (el resumen al volver tras más de 3 días; admite `{frames}` y `{friends}`).
+- **`chapters[]`, uno por jefe:**
+  - `feature`: el nivel del jefe;
+  - `framesNeeded`;
+  - `nowShowing` y `comingSoon`: los textos de la marquesina;
+  - `interludes`: los niveles de plataformas;
+  - `minigameFrames`;
+  - `organGift`: el instrumento que regala al órgano;
+  - `endCards`.
+
 **Banda provisional (`placeholderMusic`)**: `key` (tonalidad, p. ej. `"G"`), `swing` (0.5 = sin swing, 0.62 = swing de jazz) y `sections`: lista de `{ name, bars, chords, intensity (1–3), train (true = percusión de tren), mood ("dark" = apagado) }`. Los acordes van en números romanos (`I`, `ii`, `IV`, `V7`, `vi`, `VI7`, `bVII`…), uno por compás.
 
 ---
@@ -594,11 +670,11 @@ Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la con
 | 4 | Calibración de latencia en el menú y editor de ritmo | ✅ calibración · ⏳ editor de ritmo |
 | 4b | Herramientas: sincronización en un comando, eventos anclados a palabras, comprobador de niveles, pruebas y CI | ✅ |
 | 5 | Reacciones del jefe con voz (burlas y nervios), stems y música adaptativa | ⏳ |
-| 5b | Mecánicas del tema en Smokestack: solos de silencio, la cuerda del reloj y el fantasma del intento anterior | ⏳ |
-| 5c | Guardado y vuelta rápida (§6.3) ya con un solo nivel: CONTINUE, PROGRAMME (selector), puntos de control y *Rehearsal* | ⏳ |
+| 5b | Mecánicas del tema en Smokestack: solos de silencio, la cuerda del reloj y el fantasma del intento anterior | ✅ |
+| 5c | Guardado y vuelta rápida (§6.3): 3 partidas, CONTINUE, *Resume*, PROGRAMME, OPTIONS, puntos de control, *Rehearsal* y *"Previously at the Bijou…"* | ✅ |
 | 6 | Nivel **Duel**: Miss Pirouette (fases = vueltas de llave), disparo y devolución a tiempo | ⏳ |
-| 7 | La sala central, el Bijou (§6.1): zonas, ritual del proyector, fotogramas, órgano, sala que se llena, estaciones, objetos perdidos, esfera de las 11:59 y progresión de color | ⏳ |
-| 7b | Niveles entre jefes (§6.2): noticiario, serial, corto para cantar, recuerdos, recorridos por el edificio, cuarto de revelado y bobina fugitiva | ⏳ |
+| 7 | La sala central, el Bijou (§6.1): zonas, ritual del proyector, fotogramas, órgano, sala que se llena, estaciones, objetos perdidos, esfera de las 11:59 | ✅ capítulo 1 (cabina, vigas, sala y vestíbulo; el sótano y el tejado, como adelanto) |
+| 7b | Niveles entre jefes (§6.2): noticiario, serial, corto para cantar, recuerdos, recorridos por el edificio, cuarto de revelado y bobina fugitiva | ✅ capítulo 1 (el cuarto de revelado llega con el primer cambio de época) |
 | 8 | Nivel **Last Call**: Mister Too-Late (oportunidades únicas) | ⏳ |
 | 9+ | Resto de jefes, final en silencio, encore, arte aportado por el autor y publicación | ⏳ |
 

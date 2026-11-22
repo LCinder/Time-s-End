@@ -12,8 +12,10 @@ interface Segment {
 
 export class Conductor {
   private segments: Segment[] = [];
-  /** ctx time at which song-second 0 (beat 0) is heard by the speakers' scheduler. */
-  private startCtxTime = 0;
+  /** Song time `anchorSong` plays at scheduler time `anchorCtx`, then advances at `rate`. */
+  private anchorCtx = 0;
+  private anchorSong = 0;
+  private rateValue = 1;
   private running = false;
   private frozenSec = 0;
   /** Extra latency compensation (game.json audioOffsetMs). */
@@ -52,9 +54,27 @@ export class Conductor {
   /** Schedule the song so that `fromBeat` starts `leadIn` seconds from now. Returns ctx time of beat 0. */
   start(fromBeat: number, leadIn = 0.15): number {
     const ctx = AudioEngine.get().ctx;
-    this.startCtxTime = ctx.currentTime + leadIn - this.beatToSec(fromBeat);
+    this.anchorCtx = ctx.currentTime + leadIn;
+    this.anchorSong = this.beatToSec(fromBeat);
+    this.rateValue = 1;
     this.running = true;
-    return this.startCtxTime;
+    return this.anchorCtx - this.anchorSong;
+  }
+
+  /** Playback speed (1 = normal). Changes at scheduler time `atCtx` (default: now). */
+  setRate(rate: number, atCtx = AudioEngine.get().ctx.currentTime): void {
+    this.anchorSong = this.songAt(atCtx);
+    this.anchorCtx = atCtx;
+    this.rateValue = rate;
+  }
+
+  get rate(): number {
+    return this.rateValue;
+  }
+
+  /** Song seconds being *scheduled* at scheduler time t. */
+  private songAt(t: number): number {
+    return this.anchorSong + (t - this.anchorCtx) * this.rateValue;
   }
 
   stop(): void {
@@ -68,20 +88,20 @@ export class Conductor {
 
   /** ctx time (scheduler clock) for a given beat. */
   ctxTimeOfBeat(beat: number): number {
-    return this.startCtxTime + this.beatToSec(beat);
+    return this.anchorCtx + (this.beatToSec(beat) - this.anchorSong) / this.rateValue;
   }
 
   /** Song seconds as *heard* (compensating output latency + user offset). */
   get songSec(): number {
     if (!this.running) return this.frozenSec;
     const e = AudioEngine.get();
-    return e.ctx.currentTime - this.startCtxTime - e.outputLatency() - this.offsetSec;
+    return this.songAt(e.ctx.currentTime - e.outputLatency() - this.offsetSec);
   }
 
   /** Beat that was *heard* at a given ctx time (used to judge key presses). */
   beatAtCtxTime(t: number, inputOffsetMs = 0): number {
     const e = AudioEngine.get();
-    return this.secToBeat(t - this.startCtxTime - e.outputLatency() - this.offsetSec - inputOffsetMs / 1000);
+    return this.secToBeat(this.songAt(t - e.outputLatency() - this.offsetSec - inputOffsetMs / 1000));
   }
 
   get beat(): number {

@@ -47,6 +47,11 @@ export class FileSong implements SongSource {
     else this.src.start(when - fileTime, 0);
   }
 
+  /** Follow a change of the conductor's rate (the wind-up spring slowing down). */
+  setRate(rate: number, atCtx: number): void {
+    this.src?.playbackRate.setValueAtTime(rate, atCtx);
+  }
+
   stop(): void {
     const src = this.src;
     this.src = null;
@@ -220,15 +225,17 @@ export class PlaceholderSong implements SongSource {
     return this.bars[i]?.chord ?? parseChord('I', 'C');
   }
 
-  start(fromBeat: number): void {
-    this.idx = this.notes.findIndex((n) => n.beat >= fromBeat - 0.001);
+  /** `offset`: the arrangement's beat 0 plays at conductor beat `offset` (for looping). */
+  start(fromBeat: number, offset = 0): void {
+    if (this.timer !== null) window.clearInterval(this.timer);
+    this.idx = this.notes.findIndex((n) => n.beat + offset >= fromBeat - 0.001);
     if (this.idx < 0) this.idx = this.notes.length;
     const ctx = AudioEngine.get().ctx;
     const tick = (): void => {
       const horizon = ctx.currentTime + 0.15;
       while (this.idx < this.notes.length) {
         const n = this.notes[this.idx];
-        const t = this.conductor.ctxTimeOfBeat(n.beat);
+        const t = this.conductor.ctxTimeOfBeat(n.beat + offset);
         if (t > horizon) break;
         if (t >= ctx.currentTime - 0.02) n.fire(Math.max(t, ctx.currentTime), this.music, this.voice);
         this.idx++;

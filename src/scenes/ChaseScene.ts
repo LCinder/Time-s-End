@@ -5,8 +5,11 @@ import Phaser from 'phaser';
 import { AudioEngine } from '../audio/AudioEngine';
 import { sfx } from '../audio/Sfx';
 import { FileSong, PlaceholderSong, type SongSource } from '../audio/Songs';
+import * as S from '../audio/Synth';
 import { Conductor } from '../core/Conductor';
-import { Game } from '../core/Game';
+import { leaveLevel, markCue } from '../core/flow';
+import { Game, type GhostSample } from '../core/Game';
+import { recordLevel } from '../core/Save';
 import { Input } from '../core/Input';
 import { expandLyrics, type ExpandedLine } from '../core/lyrics';
 import type { LevelData, LevelEvent } from '../core/types';
@@ -39,6 +42,8 @@ interface Particle {
 }
 
 const GROUND_Y = 600;
+/** Rewinds per cue mark in this session (3 at the same spot offer a rehearsal). */
+const deathsAt: Record<string, number> = {};
 
 export class ChaseScene extends Phaser.Scene {
   private level!: LevelData;
@@ -77,13 +82,42 @@ export class ChaseScene extends Phaser.Scene {
   private showDebug = false;
   private startBeat = 0;
   private dark = 0;
+  // ── cue marks, rehearsal (MAIN.md §6.3)
+  private cueBeats: number[] = [];
+  /** Cue marks passed in this run (0 = none: restart from the beginning). */
+  private cueIndex = 0;
+  private startCue = 0;
+  private rehearsal = false;
+  private rehearsalEnd: number | null = null;
+  // ── silence solos (idea 9)
+  private silences: { start: number; end: number; warned: boolean; scheduled: boolean }[] = [];
+  // ── wind-up spring (idea 10)
+  private spring = 0.75;
+  private slowUntilBeat: number | null = null;
+  private springGfx!: Phaser.GameObjects.Graphics;
+  private banner!: Phaser.GameObjects.Text;
+  // ── ghost of the previous try (idea 11)
+  private ghostRec: GhostSample[] = [];
+  private ghostPrev: GhostSample[] | null = null;
+  private ghost: Player | null = null;
+  private ghostIdx = 0;
 
   constructor() {
     super('Chase');
   }
 
-  init(data: { levelId?: string }): void {
+  init(data: { levelId?: string; cue?: number; rehearsal?: boolean }): void {
     this.level = Game.levels[data.levelId ?? 'smokestack'];
+    this.cueBeats = this.level.events.filter((e) => e.type === 'cue').map((e) => e.beat).sort((a, b) => a - b);
+    this.startCue = Math.min(data.cue ?? 0, this.cueBeats.length);
+    this.cueIndex = this.startCue;
+    this.rehearsal = !!data.rehearsal;
+    this.rehearsalEnd = this.rehearsal ? (this.cueBeats[this.startCue] ?? this.level.song.lengthBeats) : null;
+    this.spring = 0.75;
+    this.slowUntilBeat = null;
+    this.ghostRec = [];
+    this.ghostIdx = 0;
+    this.ghost = null;
     this.hazards = [];
     this.particles = [];
     this.pendingIdx = 0;
@@ -100,7 +134,9 @@ export class ChaseScene extends Phaser.Scene {
     this.lastWholeBeat = -999;
     this.flash = 0;
     this.dark = 0;
-    this.startBeat = Game.startBeat;
+    this.startBeat = this.startCue > 0 ? this.cueBeats[this.startCue - 1] : Game.startBeat;
+    // cue marks already behind the starting point count as passed (no banner for them)
+    this.cueIndex = this.cueBeats.filter((b) => b <= this.startBeat + 0.01).length;
     this.showDebug = Game.config.debug;
   }
 
@@ -157,6 +193,23 @@ export class ChaseScene extends Phaser.Scene {
 
     this.film = addFilm(this, L.era);
 
+    this.silences = events
+      .filter((e) => e.type === 'silence' && e.beat + Number(e.lengthBeats) > this.startBeat)
+      .map((e) => ({ start: e.beat, end: e.beat + Number(e.lengthBeats), warned: false, scheduled: false }));
+    this.springGfx = this.add.graphics().setDepth(95);
+    this.banner = this.add
+      .text(640, 150, '', { fontFamily: 'Rye, Georgia, serif', fontSize: '44px', color: '#f4efe4', stroke: '#141414', strokeThickness: 9, align: 'center' })
+      .setOrigin(0.5)
+      .setDepth(120)
+      .setAlpha(0);
+    this.ghostPrev = Game.settings.ghost ? (Game.ghosts[L.id] ?? null) : null;
+    if (this.ghostPrev?.length) {
+      this.ghost = new Player(this, -200, GROUND_Y, Game.config.player);
+      this.ghost.gfx.setDepth(45);
+    }
+    if (this.rehearsal) this.showBanner('REHEARSAL\nno harm done: practise this bit', 3);
+    else if (this.startCue > 0) this.showBanner('FROM THE CUE MARK', 1.6);
+
     this.debugText = this.add
       .text(12, 70, '', { fontFamily: 'monospace', fontSize: '14px', color: '#ffffff', backgroundColor: '#000000aa' })
       .setDepth(200)
@@ -166,7 +219,7 @@ export class ChaseScene extends Phaser.Scene {
       this.debugText?.setVisible(this.showDebug);
     });
     this.input.keyboard?.on('keydown-R', () => {
-      if (this.state === 'play' || this.state === 'paused') this.restart(false);
+      if (this.state === 'play' || this.state === 'paused') this.restart(false, this.rehearsal ? this.startCue : 0, this.rehearsal);
     });
     // debug: nudge the audio offset live with [ ] (or - +), saved like a calibration
     this.input.keyboard?.on('keydown', (ev: KeyboardEvent) => {
@@ -307,8 +360,13 @@ export class ChaseScene extends Phaser.Scene {
     this.updateFilm(dt);
     this.updateDebug(beat);
 
+    if (this.state === 'play') this.themeUpdate(beat, dt);
+
     // the end of the song = you escaped!
-    if (this.state === 'play' && beat >= L.song.lengthBeats) this.win();
+    if (this.state === 'play' && beat >= L.song.lengthBeats) {
+      if (this.rehearsal) this.endRehearsal();
+      else this.win();
+    }
   }
 
   private makeCtx(dt: number, time: number): ChaseCtx {
@@ -410,6 +468,7 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   private registerOnBeat(label: string): void {
+    this.windSpring(label === 'PERFECT!' ? this.springTune.perfect : this.springTune.good);
     this.onBeatCount++;
     this.combo++;
     this.bestCombo = Math.max(this.bestCombo, this.combo);
@@ -502,6 +561,11 @@ export class ChaseScene extends Phaser.Scene {
     this.flash = 0.35;
     this.cameras.main.shake(220, 0.012);
     this.boss.laugh();
+    this.windSpring(-this.springTune.hit);
+    if (this.rehearsal) {
+      this.hits = Math.min(this.hits, Game.diff.playerHits - 1);
+      return;
+    }
     if (this.hits >= Game.diff.playerHits) this.die();
   }
 
@@ -514,14 +578,21 @@ export class ChaseScene extends Phaser.Scene {
     this.player.invulnerable = 0;
     sfx('death');
     this.saveResults(false);
+    this.keepGhost();
+    AudioEngine.get().unsilence();
+    const key = `${this.level.id}:${this.cueIndex}`;
+    deathsAt[key] = (deathsAt[key] ?? 0) + 1;
     if (this.film) {
       this.tweens.add({ targets: this.film, burn: 1, duration: 2200, delay: 900, ease: 'Quad.In' });
     }
     this.time.delayedCall(this.film ? 3400 : 1200, () => {
-      this.showOverlay('THE END?', [
-        'ENTER  -  rewind the reel & try again',
-        'ESC  -  back to the title',
-      ], this.hitsSummary(false));
+      const key = `${this.level.id}:${this.cueIndex}`;
+      const opts = this.cueIndex > 0
+        ? ['ENTER  -  rewind to the last cue mark', 'S  -  rewind to the very start']
+        : ['ENTER  -  rewind the reel & try again'];
+      if ((deathsAt[key] ?? 0) >= 3) opts.push('R  -  REHEARSAL: practise this bit, no harm done');
+      opts.push(`ESC  -  ${this.leaveLabel()}`);
+      this.showOverlay('THE END?', opts, this.hitsSummary(false));
     });
   }
 
@@ -532,6 +603,8 @@ export class ChaseScene extends Phaser.Scene {
     this.conductor.stop();
     sfx('victory');
     const res = this.saveResults(true);
+    this.keepGhost();
+    this.recordVictory(res.rank);
     // iris out on Tick
     const black = this.add.rectangle(640, 360, 1280, 720, 0x0b0b0b).setDepth(150);
     const circle = this.make.graphics({}, false);
@@ -563,7 +636,7 @@ export class ChaseScene extends Phaser.Scene {
               circle.fillCircle(px, py, iris.r);
             },
             onComplete: () => {
-              this.showOverlay("THAT'S A WRAP!", ['ENTER  -  play again', 'ESC  -  back to the title'], [
+              this.showOverlay("THAT'S A WRAP!", [`ENTER  -  ${this.leaveLabel()}`, 'R  -  play again'], [
                 `RANK  ${res.rank}`,
                 `Hits taken: ${res.hitsTaken}`,
                 `On-beat moves: ${res.onBeat} / ${res.beatActions}`,
@@ -632,7 +705,7 @@ export class ChaseScene extends Phaser.Scene {
     options.forEach((o, i) => {
       c.add(
         this.add
-          .text(0, 130 + i * 40, o, { fontFamily: 'Limelight, Georgia, serif', fontSize: '26px', color: '#cfc8b8' })
+          .text(0, 196 - (options.length - i) * 38, o, { fontFamily: 'Limelight, Georgia, serif', fontSize: '26px', color: '#cfc8b8' })
           .setOrigin(0.5),
       );
     });
@@ -647,11 +720,161 @@ export class ChaseScene extends Phaser.Scene {
 
   private handleEndInput(): void {
     if (!this.overlay) return;
-    if (this.input2.consume('confirm') !== null) this.restart(true);
+    const kb = this.input.keyboard;
+    const key = (k: string): boolean => !!kb && kb.checkDown(kb.addKey(k), 99999);
+    if (this.state === 'won') {
+      if (this.input2.consume('confirm') !== null) this.quitToTitle();
+      else if (key('R')) this.restart(true, 0);
+      return;
+    }
+    const deaths = deathsAt[`${this.level.id}:${this.cueIndex}`] ?? 0;
+    if (this.input2.consume('confirm') !== null) this.restart(true, this.cueIndex);
+    else if (key('S')) this.restart(true, 0);
+    else if (deaths >= 3 && key('R')) this.restart(true, this.cueIndex, true);
     else if (this.input2.consume('pause') !== null) this.quitToTitle();
   }
 
-  private restart(rewind: boolean): void {
+  private leaveLabel(): string {
+    return Game.returnTo === 'hub' ? 'back to the Bijou' : Game.returnTo === 'programme' ? 'back to the programme' : 'back to the title';
+  }
+
+  // ───────────────────────── theme mechanics ─────────────────────────
+
+  private get springTune(): { drainPerBeat: number; perfect: number; good: number; hit: number; slowRate: number; slowBeats: number } {
+    return { drainPerBeat: 0.006, perfect: 0.09, good: 0.05, hit: 0.18, slowRate: 0.85, slowBeats: 4, ...(Game.diff.spring ?? {}) };
+  }
+
+  private windSpring(d: number): void {
+    this.spring = Phaser.Math.Clamp(this.spring + d, 0, 1);
+  }
+
+  private themeUpdate(beat: number, dt: number): void {
+    const prevBeat = this.ghostRec.length ? this.ghostRec[this.ghostRec.length - 1].b : beat;
+    // cue marks: remember the last one passed
+    while (this.cueIndex < this.cueBeats.length && beat >= this.cueBeats[this.cueIndex]) {
+      this.cueIndex++;
+      if (this.rehearsal && this.rehearsalEnd !== null && beat >= this.rehearsalEnd) return this.endRehearsal();
+      if (!this.rehearsal) {
+        markCue(this.level.id, this.cueIndex);
+        this.showBanner('CUE MARK', 1.2);
+        sfx('click');
+      }
+    }
+    // silence solos: the band stops, only Tick's ticking and the hazards keep the beat
+    for (const si of this.silences) {
+      if (!si.warned && beat >= si.start - 3) {
+        si.warned = true;
+        // stays up for the whole solo
+        this.showBanner('KEEP TIME!', (this.conductor.beatToSec(si.end) - this.conductor.beatToSec(beat)));
+      }
+      if (!si.scheduled && beat >= si.start - 1) {
+        si.scheduled = true;
+        const e = AudioEngine.get();
+        e.silence(this.conductor.ctxTimeOfBeat(si.start), this.conductor.ctxTimeOfBeat(si.end));
+        for (let b = Math.ceil(si.start); b < si.end; b++) S.woodblock(e.sfx, this.conductor.ctxTimeOfBeat(b), b % 2 ? 72 : 79);
+      }
+    }
+    this.lyricsUI.setHidden(this.silences.some((si) => beat >= si.start && beat < si.end));
+    // the spring runs down; empty, the world slows like a watch that stops
+    this.windSpring(-(beat - prevBeat) * this.springTune.drainPerBeat);
+    if (this.spring <= 0 && this.slowUntilBeat === null) {
+      const t = this.springTune;
+      this.slowUntilBeat = beat + t.slowBeats;
+      this.setRate(t.slowRate);
+      this.showBanner('WIND ME UP!', 1.6);
+      sfx('fall');
+    }
+    if (this.slowUntilBeat !== null && beat >= this.slowUntilBeat) {
+      this.slowUntilBeat = null;
+      this.setRate(1);
+      this.spring = 0.4;
+    }
+    this.drawSpring(beat);
+    // ghost: record this try, replay the last one
+    const sx = this.player.x - this.camX;
+    this.ghostRec.push({ b: beat, x: sx, y: this.player.y, g: this.player.onGround, f: this.player.facing });
+    this.drawGhost(beat, dt);
+  }
+
+  private setRate(rate: number): void {
+    const now = AudioEngine.get().ctx.currentTime;
+    this.conductor.setRate(rate, now);
+    if (this.song instanceof FileSong) this.song.setRate(rate, now);
+  }
+
+  private drawSpring(beat: number): void {
+    const g = this.springGfx;
+    g.clear();
+    const x = 1196;
+    const y = 104;
+    const low = this.spring < 0.25;
+    const shake = low ? Math.sin(beat * 40) * 1.5 : 0;
+    g.lineStyle(5, 0x141414, 1).strokeCircle(x + shake, y, 22);
+    g.fillStyle(0xd8c17a, 1).fillCircle(x + shake, y, 20);
+    g.lineStyle(6, low ? 0x8a2f2a : 0xf4efe4, 1);
+    g.beginPath();
+    g.arc(x + shake, y, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * this.spring);
+    g.strokePath();
+    // the winding key on top turns with the beat
+    const a = this.slowUntilBeat !== null ? 0 : beat * Math.PI * 0.5;
+    g.lineStyle(5, 0x141414, 1).lineBetween(x - Math.cos(a) * 12, y - 34, x + Math.cos(a) * 12, y - 34);
+    g.lineBetween(x, y - 22, x, y - 34);
+  }
+
+  private drawGhost(beat: number, dt: number): void {
+    const prev = this.ghostPrev;
+    const gp = this.ghost;
+    if (!prev || !gp) return;
+    while (this.ghostIdx < prev.length - 1 && prev[this.ghostIdx + 1].b <= beat) this.ghostIdx++;
+    const smp = prev[this.ghostIdx];
+    if (!smp || smp.b > beat + 0.1 || beat > prev[prev.length - 1].b) {
+      gp.gfx.setVisible(false);
+      return;
+    }
+    gp.ghostStep(dt, this.camX + smp.x, smp.y, smp.g, smp.f);
+    gp.draw(dt, this.time.now / 1000, beat, this.camX);
+    gp.gfx.setVisible(true).setAlpha(0.28);
+  }
+
+  private keepGhost(): void {
+    if (this.ghostRec.length > 30 && !this.rehearsal) Game.ghosts[this.level.id] = this.ghostRec;
+  }
+
+  private showBanner(text: string, sec: number): void {
+    this.tweens.killTweensOf(this.banner);
+    this.banner.setText(text).setAlpha(1).setScale(1.25);
+    this.tweens.add({ targets: this.banner, scale: 1, duration: 300, ease: 'Back.Out' });
+    this.tweens.add({ targets: this.banner, alpha: 0, delay: sec * 1000, duration: 400 });
+  }
+
+  private endRehearsal(): void {
+    this.state = 'won';
+    this.song?.stop();
+    this.conductor.stop();
+    sfx('select');
+    this.showBanner('REHEARSAL OVER!\nNow for real...', 2);
+    this.time.delayedCall(2200, () => this.restart(true, this.startCue));
+  }
+
+  private recordVictory(rank: string): void {
+    const s = Game.save;
+    if (!s) return;
+    recordLevel(s, this.level.id, true, rank);
+    const isFeature = Game.story.chapters.some((c) => c.feature === this.level.id);
+    if (isFeature && !s.freed.includes(this.level.id)) s.freed.push(this.level.id);
+    s.resume = null;
+    Game.persist();
+  }
+
+  private restart(rewind: boolean, cue = 0, rehearsal = false): void {
+    AudioEngine.get().unsilence();
+    this.restartData = { levelId: this.level.id, cue, rehearsal };
+    this.restartInner(rewind);
+  }
+
+  private restartData: { levelId: string; cue: number; rehearsal: boolean } = { levelId: '', cue: 0, rehearsal: false };
+
+  private restartInner(rewind: boolean): void {
     if (this.state === 'paused') AudioEngine.get().resume();
     this.song?.stop();
     this.conductor.stop();
@@ -661,9 +884,9 @@ export class ChaseScene extends Phaser.Scene {
       this.overlay?.destroy();
       this.overlay = null;
       this.add.text(640, 360, '<< REWINDING', { fontFamily: 'Rye, Georgia, serif', fontSize: '48px', color: '#f4efe4', stroke: '#141414', strokeThickness: 8 }).setOrigin(0.5).setDepth(190);
-      this.tweens.add({ targets: this.film, roll: 4, burn: 0, duration: 1000, ease: 'Quad.In', onComplete: () => this.scene.restart({ levelId: this.level.id }) });
+      this.tweens.add({ targets: this.film, roll: 4, burn: 0, duration: 1000, ease: 'Quad.In', onComplete: () => this.scene.restart(this.restartData) });
     } else {
-      this.scene.restart({ levelId: this.level.id });
+      this.scene.restart(this.restartData);
     }
   }
 
@@ -671,7 +894,9 @@ export class ChaseScene extends Phaser.Scene {
     if (this.state === 'paused') AudioEngine.get().resume();
     this.song?.stop();
     this.conductor.stop();
-    this.scene.start('Title');
+    AudioEngine.get().unsilence();
+    if (this.state !== 'won' && this.state !== 'dead') this.keepGhost();
+    leaveLevel(this, this.level.id, { completed: this.state === 'won' });
   }
 
   // ───────────────────────── pause ─────────────────────────
@@ -683,7 +908,7 @@ export class ChaseScene extends Phaser.Scene {
     const bg = this.add.rectangle(0, 0, 1280, 720, 0x0b0b0b, 0.7);
     c.add(bg);
     c.add(this.add.text(0, -80, 'INTERMISSION', { fontFamily: 'Rye, Georgia, serif', fontSize: '72px', color: '#f4efe4', stroke: '#141414', strokeThickness: 10 }).setOrigin(0.5));
-    ['ESC / ENTER  -  resume', 'R  -  restart', 'Q  -  quit to title'].forEach((s, i) =>
+    ['ESC / ENTER  -  resume', 'R  -  restart', `Q  -  ${this.leaveLabel()}`].forEach((s, i) =>
       c.add(this.add.text(0, 20 + i * 42, s, { fontFamily: 'Limelight, Georgia, serif', fontSize: '28px', color: '#cfc8b8' }).setOrigin(0.5)),
     );
     this.overlay = c;
@@ -723,7 +948,7 @@ export class ChaseScene extends Phaser.Scene {
     const targetDamage = (this.hits / Game.diff.playerHits) * 0.9;
     f.damage += (targetDamage - f.damage) * Math.min(1, dt * 4);
     this.flash = Math.max(0, this.flash - dt * 2.5);
-    f.flash = this.flash;
+    f.flash = this.flash * (Game.settings.reduceFlicker ? 0.25 : 1);
     f.dark = this.dark * 0.94;
     f.light1 = { x: this.player.x - this.camX, y: this.player.y - 60, r: 190 };
     const lamp = this.boss.lamp;

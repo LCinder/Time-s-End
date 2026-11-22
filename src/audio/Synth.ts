@@ -57,6 +57,31 @@ function play(nodes: (OscillatorNode | AudioBufferSourceNode)[], t: number, dur:
 
 // ───────────────────────── Band instruments ─────────────────────────
 
+/** Theatre organ: stacked sine "pipes" with a slow tremolo. `tremble` adds the wobble
+ *  of an old, lonely organ (the Bijou at the start of the game). */
+export function organ(dest: AudioNode, t: number, midi: number, dur: number, vel = 0.3, tremble = 0): void {
+  const g = gain(dest);
+  const trem = osc('sine', 5.5 + tremble * 1.5);
+  const tg = gain(g.gain, vel * (0.12 + tremble * 0.25));
+  trem.connect(tg);
+  const pipes: OscillatorNode[] = [];
+  for (const [mult, v] of [[1, 1], [2, 0.45], [4, 0.18], [0.5, 0.3]] as const) {
+    const o = osc('sine', mtof(midi) * mult);
+    const og = gain(g, v);
+    o.connect(og);
+    if (tremble > 0) {
+      const vib = osc('sine', 4.2);
+      const vg = gain(o.frequency, mtof(midi) * mult * 0.006 * tremble);
+      vib.connect(vg);
+      pipes.push(vib);
+    }
+    pipes.push(o);
+  }
+  env(g, t, vel * 0.22, 0.06, Math.max(0.1, dur * 0.6), vel * 0.15, 0.25, dur * 0.3);
+  play([...pipes, trem], t, dur + 0.4);
+}
+
+
 /** Honky-tonk piano: two slightly detuned triangles + a click. */
 export function piano(dest: AudioNode, t: number, midi: number, dur: number, vel = 0.5): void {
   const f = mtof(midi);

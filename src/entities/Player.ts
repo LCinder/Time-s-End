@@ -193,6 +193,16 @@ export class Player {
     }
   }
 
+  /** Drive the drawing from recorded positions (the ghost of the previous try). */
+  ghostStep(dt: number, x: number, y: number, onGround: boolean, facing: number): void {
+    const moved = Math.abs(x - this.x);
+    this.x = x;
+    this.y = y;
+    this.onGround = onGround;
+    this.facing = facing;
+    if (onGround) this.runPhase += dt * (6 + Math.min(600, moved / Math.max(dt, 1e-3)) / 45);
+  }
+
   /** Dance in place to the music (title screen). */
   dance(beat: number): void {
     this.onGround = true;

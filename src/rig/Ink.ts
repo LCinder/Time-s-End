@@ -89,7 +89,7 @@ export class Ink {
   }
 
   /** Rounded rectangle as polygon. */
-  rrect(x: number, y: number, w: number, h: number, r: number, fill: number | null, outline = 4): void {
+  rrect(x: number, y: number, w: number, h: number, r: number, fill: number | null, outline = 4, outlineColor = INK, alpha = 1): void {
     const pts: Pt[] = [];
     const corners = [
       [x + w - r, y + r, -Math.PI / 2],
@@ -103,7 +103,7 @@ export class Ink {
         pts.push(this.j(cx + Math.cos(a) * r, cy + Math.sin(a) * r));
       }
     }
-    this.shape(pts, fill, outline);
+    this.shape(pts, fill, outline, outlineColor, alpha);
   }
 
   /** Thick stroke following a quadratic curve, built from stamped circles (perfect round "hose"). */

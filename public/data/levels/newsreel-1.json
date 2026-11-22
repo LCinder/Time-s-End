@@ -1,0 +1,69 @@
+{
+  "id": "newsreel-1",
+  "type": "platform",
+  "kind": "newsreel",
+  "title": "BIJOU NEWS",
+  "subtitle": "The Bijou Closes Its Doors",
+  "era": "bw1928",
+  "music": {
+    "bpm": 126,
+    "beatsPerBar": 4,
+    "placeholder": {
+      "key": "Bb",
+      "swing": 0.5,
+      "sections": [
+        {
+          "name": "fanfare",
+          "bars": 2,
+          "chords": [
+            "I",
+            "V7"
+          ],
+          "intensity": 3
+        },
+        {
+          "name": "march",
+          "bars": 16,
+          "chords": [
+            "I",
+            "IV",
+            "V7",
+            "I",
+            "I",
+            "vi",
+            "II7",
+            "V7"
+          ],
+          "intensity": 3
+        }
+      ]
+    }
+  },
+  "autoscroll": 100,
+  "texts": [
+    "EXTRA! EXTRA! THE BIJOU PICTURE PALACE TO CLOSE!",
+    "\"LAST SHOW TONIGHT,\" SAYS THE MANAGER",
+    "CROWDS STAY HOME: TALKIES ACROSS TOWN!",
+    "PROJECTIONIST REFUSES TO LEAVE: \"THE PICTURES MUST GO ON\""
+  ],
+  "map": [
+    "                                                                                                                                                                                              ",
+    "                                                                                                                                                                                              ",
+    "                                                                                                                                                                                              ",
+    "                                                    B    B                                                                                            B   B                                   ",
+    "                                                                                                                                                                                              ",
+    "                                                                                                                                                                                              ",
+    "                                                                                                                                                                                              ",
+    "                                                                                                                                                                                              ",
+    "                        S                                                   S   S                                                                                                             ",
+    "                                                                  *                                                                                                                           ",
+    "                                       *                                                             *                                                                                        ",
+    "                           *                                                            *                                                                   *                                 ",
+    "                                                                  bb                                ###                                bb                                                     ",
+    "                                                              aa                                    ###                             aa    aa                                                  ",
+    "    P     T                            ^      C T                                   T               ### ^^      C                                 T                                   E       ",
+    "###############   #############   ###########################          ####################   #####################################          ####################   ##########################",
+    "###############   #############   ###########################          ####################   #####################################          ####################   ##########################",
+    "###############   #############   ###########################          ####################   #####################################          ####################   ##########################"
+  ]
+}
