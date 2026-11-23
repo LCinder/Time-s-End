@@ -13,6 +13,11 @@ export function spawnBeatOf(e: LevelEvent, diff: DifficultySpec): number {
     case 'coal': return e.beat - 1;
     case 'smokeRing': return e.beat - n('travelBeats', 2) / diff.hazardSpeedMultiplier;
     case 'bossLunge': return e.beat - n('telegraphBeats', diff.telegraphBeats);
+    case 'ticketCheck': return e.beat - 3;
+    case 'holePunch': return e.beat - n('biteBeats', 1.5) - 1.2;
+    case 'crossing': return e.beat - 5;
+    case 'cuckoos': return e.beat - 5;
+    case 'pendulum': return e.beat - 6;
     default: return e.beat;
   }
 }

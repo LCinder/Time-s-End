@@ -153,6 +153,11 @@ export const EVENT_SCHEMAS: Record<string, { required: string[]; optional: strin
   shake: { required: [], optional: ['intensity', 'durationBeats'], help: 'Camera shake.' },
   cue: { required: [], optional: [], help: 'Cue mark (checkpoint): after losing, the player can rewind to the last one passed.' },
   silence: { required: ['lengthBeats'], optional: [], help: 'Silence solo: the band stops for `lengthBeats`; only the ticking and the hazards keep the beat.' },
+  ticketCheck: { required: [], optional: ['count', 'spacingBeats'], help: '"Tickets, please": a ticket appears over Tick; each on-beat jump on `beat`, `beat`+spacing… punches a hole. A valid ticket delays the train.' },
+  holePunch: { required: [], optional: ['lengthBeats', 'biteBeats'], help: 'A giant ticket punch bites a hole in the track `biteBeats` (1.5) before the anchor reaches it on `beat`. Jump it like a gap.' },
+  crossing: { required: [], optional: ['count', 'spacingBeats'], help: 'Level crossing(s): the barrier arm is down when Tick reaches it on `beat` (and every `spacingBeats`). Jump it.' },
+  cuckoos: { required: [], optional: ['count', 'spacingBeats'], help: 'Cuckoo clocks on posts: the bird springs across the track on `beat` (and every `spacingBeats`). Jump it.' },
+  pendulum: { required: [], optional: ['count', 'spacingBeats'], help: "A ghost grandfather clock swings its pendulum through the track: the bob passes Tick's spot on `beat`. Jump it." },
 };
 
 export function validateLevel(raw: unknown, file: string): LevelData {

@@ -377,6 +377,14 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
   - Señala al cielo antes de que caiga algo.
   - Dirige la banda con el brazo mientras canta y cierra los dos puños al embestir.
 - Peligros: huecos en la vía, vagón, yunques y piano que caen del cielo, palabras-plataforma, ondas del silbato, carbón vivo que salta en cada beat, anillos de humo, embestidas y el túnel a oscuras.
+- **Eventos ligados a la canción** (`src/entities/events.ts`), primera tanda:
+  - "Tickets, please…" (compases 24–30): picar el billete con saltos a tempo; si es válido, el tren se retrasa;
+  - "Tick-tock… your ticket's overdue" (118, 230, 315): la picadora gigante muerde la vía;
+  - paso a nivel en el pueblo fantasma (122, 124);
+  - "sixty cuckoo clocks" (152, 154): cucos saltando a la vía;
+  - "I ran down a grandfather" (156): el péndulo del reloj de pie fantasma.
+
+  Todos se pasan saltando en el beat (comprobado jugando con las vidas activadas). Pendientes: depósito de agua y apagón en el solo de silencio, cambio de agujas, la llave de cuerda, relojes fantasma, semáforo con la nota congelada, parar el tiempo, el túnel a la escucha, el piano funerario y la carrera por el techo de los vagones.
 - **El viaje** (§8.2b): la persecución pasa por seis escenarios mientras el reloj avanza de la tarde al amanecer:
 
   | Parte de la canción | Beats | Escenario | Hora |
@@ -710,6 +718,11 @@ Escenarios disponibles (`set`): `dusk` (campos secos), `town` (pueblo fantasma),
 | `shake` | `intensity` (0.01), `durationBeats` (1) | Sacudida de cámara |
 | `cue` | — | Punto de control: al perder se puede rebobinar al último que pasaste (§6.3) |
 | `silence` | `lengthBeats` | Solo de silencio: la banda calla durante `lengthBeats` y solo el tic-tac y los peligros marcan el beat (idea 9) |
+| `ticketCheck` | `count` (4), `spacingBeats` (2) | "Tickets, please": un billete aparece sobre Tick y cada salto a tempo en `beat`, `beat`+spacing… pica un agujero. Con un billete válido el tren se queda atrás unos compases |
+| `holePunch` | `lengthBeats` (1), `biteBeats` (1.5) | Unas tenazas de picar billetes gigantes muerden la vía `biteBeats` antes de que Tick llegue en `beat`: un hueco que aparece de repente |
+| `crossing` | `count`, `spacingBeats` (2) | Paso a nivel: la barrera baja con la campana y está abajo cuando Tick llega en `beat` (y cada `spacingBeats`). Hay que saltarla; el tren la hace astillas |
+| `cuckoos` | `count`, `spacingBeats` (2) | Relojes de cuco en postes: el pájaro sale con un muelle a la vía en `beat`. Hay que saltarlo |
+| `pendulum` | — | El fantasma de un reloj de pie balancea el péndulo como un metrónomo; la bola pasa por el sitio de Tick justo después de `beat`. Hay que saltar en el beat |
 
 ### 11.5 Comprobador de niveles (`npm run check`)
 Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la consola del navegador.

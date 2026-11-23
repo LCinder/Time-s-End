@@ -4,11 +4,14 @@
 import Phaser from 'phaser';
 import type { LevelEvent } from '../core/types';
 import { INK, PAPER } from '../rig/Ink';
-import type { SolidWorld } from './Solids';
+import type { Solid, SolidWorld } from './Solids';
 
 interface Segment {
   x1: number;
   x2: number;
+  /** A hole bitten by the ticket punch: the track is still whole (and solid) until this beat. */
+  reveal?: number;
+  patch?: Solid;
 }
 
 interface Sign {
@@ -33,10 +36,13 @@ export class Track {
     const { groundY, ppb, anchorX, gapLeadPx, endBeat } = opts;
 
     this.gaps = events
-      .filter((e) => e.type === 'gap')
+      .filter((e) => e.type === 'gap' || e.type === 'holePunch')
       .map((e) => {
         const x1 = e.beat * ppb + anchorX + gapLeadPx;
-        return { x1, x2: x1 + Number(e.lengthBeats) * ppb };
+        const len = typeof e.lengthBeats === 'number' ? e.lengthBeats : Number(e.lengthBeats ?? 1);
+        const gap: Segment = { x1, x2: x1 + len * ppb };
+        if (e.type === 'holePunch') gap.reveal = e.beat - (typeof e.biteBeats === 'number' ? e.biteBeats : 1.5);
+        return gap;
       })
       .sort((a, b) => a.x1 - b.x1);
 
@@ -48,6 +54,12 @@ export class Track {
     }
     this.segments.push({ x1: cursor, x2: end });
     for (const s of this.segments) world.add({ x: s.x1, y: groundY, w: s.x2 - s.x1, h: 400, active: true });
+    // a punched hole stays solid track until the punch bites it
+    for (const g of this.gaps) {
+      if (g.reveal === undefined) continue;
+      g.patch = { x: g.x1, y: groundY, w: g.x2 - g.x1, h: 400, active: true };
+      world.add(g.patch);
+    }
 
     for (const e of events.filter((ev) => ev.type === 'sign')) {
       const sx = typeof e.x === 'number' ? e.x : 1100;
@@ -68,15 +80,25 @@ export class Track {
     void this.scene;
   }
 
-  update(camX: number, time: number, groundY: number): void {
+  update(camX: number, time: number, groundY: number, beat = Infinity): void {
     const g = this.gfx;
     g.clear();
     const left = camX - 60;
     const right = camX + 1340;
+    for (const gap of this.gaps) if (gap.patch) gap.patch.active = beat < (gap.reveal ?? -Infinity);
+    // until it is bitten, a punched hole is drawn as plain track
+    const drawn = [...this.segments];
+    const hidden = new Set<number>();
+    for (const gap of this.gaps) {
+      if (!gap.patch?.active) continue;
+      drawn.push({ x1: gap.x1, x2: gap.x2 });
+      hidden.add(gap.x1);
+      hidden.add(gap.x2);
+    }
 
     // canyon walls behind gaps
     for (const gap of this.gaps) {
-      if (gap.x2 < left || gap.x1 > right) continue;
+      if (gap.x2 < left || gap.x1 > right || gap.patch?.active) continue;
       const x1 = gap.x1 - camX;
       const x2 = gap.x2 - camX;
       g.fillStyle(0x2a2622, 1);
@@ -85,7 +107,7 @@ export class Track {
       g.fillRect(x1 + 10, groundY + 40, x2 - x1 - 20, 120);
     }
 
-    for (const s of this.segments) {
+    for (const s of drawn) {
       if (s.x2 < left || s.x1 > right) continue;
       const x1 = Math.max(s.x1, left) - camX;
       const x2 = Math.min(s.x2, right) - camX;
@@ -119,7 +141,7 @@ export class Track {
       g.strokeRect(x1, groundY - 14, x2 - x1, 8);
       // edges (cliff) next to gaps
       for (const edge of [s.x1, s.x2]) {
-        if (edge < left || edge > right) continue;
+        if (edge < left || edge > right || hidden.has(edge)) continue;
         const ex = edge - camX;
         g.lineStyle(5, INK, 1);
         g.lineBetween(ex, groundY - 14, ex, groundY + 140);

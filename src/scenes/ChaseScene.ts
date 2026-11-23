@@ -26,6 +26,7 @@ import { boilKey } from '../fx/Textures';
 import { Hud } from '../ui/Hud';
 import { LyricsUI } from '../ui/LyricsUI';
 import { Scenery } from '../world/Scenery';
+import { CrossingEvent, CuckooEvent, HolePunchEvent, PendulumEvent, TicketCheckEvent } from '../entities/events';
 import { SolidWorld } from '../world/Solids';
 import { Track } from '../world/Track';
 
@@ -82,6 +83,22 @@ export class ChaseScene extends Phaser.Scene {
   private overlay: Phaser.GameObjects.Container | null = null;
   private debugText: Phaser.GameObjects.Text | null = null;
   private godText: Phaser.GameObjects.Text | null = null;
+  /** The last jump (for events that listen to the rhythm, like the ticket check). */
+  private lastJump: { beat: number; label: string } | null = null;
+  /** The train pushed back (a valid ticket): px at `from`, easing back in over `beats`. */
+  private bossDelay: { px: number; from: number; beats: number } | null = null;
+
+  private bossDelayNow(beat: number): number {
+    const d = this.bossDelay;
+    if (!d) return 0;
+    const t = (beat - d.from) / d.beats;
+    if (t >= 1) {
+      this.bossDelay = null;
+      return 0;
+    }
+    // back quickly, then creep forward again
+    return d.px * Math.min(1, t * 6) * (1 - t * t);
+  }
   private showDebug = false;
   private startBeat = 0;
   private dark = 0;
@@ -285,6 +302,12 @@ export class ChaseScene extends Phaser.Scene {
     await AudioEngine.get().resume();
     this.conductor.start(this.startBeat, 0.4);
     song.start(this.startBeat);
+    // Tick starts exactly on his spot (the anchor) for the beat the song starts from
+    const camAtStart = this.conductor.beat * L.chase.pixelsPerBeat;
+    let sx = camAtStart + L.chase.anchorX;
+    while (this.world.groundAt(sx, GROUND_Y - 5) === null) sx += 20;
+    this.player.x = sx;
+    this.player.vx = 0;
     this.state = 'play';
   }
 
@@ -333,8 +356,10 @@ export class ChaseScene extends Phaser.Scene {
     const c = this.readControls();
     this.player.update(dt, c, {
       world: this.world,
-      baseSpeed: camSpeed,
-      autoRun: L.chase.autoRun,
+      // while the song loads the camera stands still: so does Tick (otherwise he starts
+      // ahead of his spot and every "jump on the beat" lands late)
+      baseSpeed: this.state === 'loading' ? 0 : camSpeed,
+      autoRun: L.chase.autoRun && this.state !== 'loading',
       minX: this.camX + 24,
       maxX: this.camX + 1250,
     });
@@ -356,7 +381,8 @@ export class ChaseScene extends Phaser.Scene {
     // fell into a gap
     if (this.player.y > GROUND_Y + 260 && this.state === 'play') {
       this.hurt('fall', true);
-      let x = this.camX + L.chase.anchorX + 60;
+      // back exactly on his spot (or the first solid ground after it), so the beat still lines up
+      let x = this.camX + L.chase.anchorX;
       while (this.world.groundAt(x, GROUND_Y - 5) === null) x += 20;
       this.player.x = x;
       this.player.y = GROUND_Y - 420;
@@ -384,7 +410,7 @@ export class ChaseScene extends Phaser.Scene {
 
     // visuals
     this.scenery.update(this.camX, beat, time, this.dark);
-    this.track.update(this.camX, time, GROUND_Y);
+    this.track.update(this.camX, time, GROUND_Y, beat);
     this.lyricsUI.update(beat, time);
     this.updateParticles(dt, time);
     this.player.draw(dt, time, beat, this.camX);
@@ -421,6 +447,10 @@ export class ChaseScene extends Phaser.Scene {
       shake: (i, ms) => this.cameras.main.shake(ms, i),
       dust: (x, y, n) => this.dust(x, y, n),
       camXAtBeat: (b) => b * ppb,
+      lastJump: this.lastJump,
+      delayBoss: (px, beats) => {
+        this.bossDelay = { px, from: this.beat, beats };
+      },
     };
   }
 
@@ -432,6 +462,11 @@ export class ChaseScene extends Phaser.Scene {
       case 'coal': this.hazards.push(new CoalHazard(ctx, e)); break;
       case 'smokeRing': this.hazards.push(new SmokeRingHazard(ctx, e)); break;
       case 'bossLunge': this.hazards.push(new LungeHazard(ctx, e)); break;
+      case 'ticketCheck': this.hazards.push(new TicketCheckEvent(ctx, e)); break;
+      case 'holePunch': this.hazards.push(new HolePunchEvent(ctx, e)); break;
+      case 'crossing': this.hazards.push(new CrossingEvent(ctx, e)); break;
+      case 'cuckoos': this.hazards.push(new CuckooEvent(ctx, e)); break;
+      case 'pendulum': this.hazards.push(new PendulumEvent(ctx, e)); break;
       case 'bossFall':
         this.bossFallBeat = e.beat;
         this.bossCrashBeat = typeof e.crashBeat === 'number' ? e.crashBeat : e.beat + 4;
@@ -489,6 +524,7 @@ export class ChaseScene extends Phaser.Scene {
 
   private onPlayerJump(): void {
     this.beatActions++;
+    this.lastJump = { beat: this.beat, label: this.lastJumpJudge.label };
     if (this.lastJumpJudge.label === 'PERFECT!') this.player.accent();
     if (this.lastJumpJudge.label) {
       sfx('jumpBeat');
@@ -603,7 +639,7 @@ export class ChaseScene extends Phaser.Scene {
       }
       b.setVisible(!this.bossCrashed);
     } else {
-      b.screenX = L.chase.bossFrontX + b.lunge;
+      b.screenX = L.chase.bossFrontX + b.lunge - this.bossDelayNow(beat);
       const m = LyricsUI.mouthAt(this.lines, beat);
       b.mouth += (m.open - b.mouth) * Math.min(1, dt * 25);
       b.viseme = m.word ? visemeAt(m.word, m.f) : 'rest';

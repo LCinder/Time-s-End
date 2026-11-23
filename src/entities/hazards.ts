@@ -28,6 +28,10 @@ export interface ChaseCtx {
   shake: (intensity: number, ms: number) => void;
   dust: (screenX: number, screenY: number, count?: number) => void;
   camXAtBeat: (beat: number) => number;
+  /** The player's last jump: the beat it happened and whether it was on the beat. */
+  lastJump: { beat: number; label: string } | null;
+  /** Push the train back by `px`, easing back in over `beats`. */
+  delayBoss: (px: number, beats: number) => void;
 }
 
 export interface Hazard {

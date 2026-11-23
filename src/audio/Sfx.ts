@@ -5,7 +5,8 @@ import * as S from './Synth';
 
 export type SfxName =
   | 'jump' | 'jumpBeat' | 'land' | 'dash' | 'hit' | 'onBeat' | 'whistle' | 'crash' | 'bigCrash'
-  | 'pianoCrash' | 'hop' | 'boing' | 'pop' | 'death' | 'victory' | 'rewind' | 'click' | 'select' | 'fall';
+  | 'pianoCrash' | 'hop' | 'boing' | 'pop' | 'death' | 'victory' | 'rewind' | 'click' | 'select' | 'fall'
+  | 'bell' | 'cuckoo' | 'punch' | 'tick' | 'stamp';
 
 export function sfx(name: SfxName, delay = 0): void {
   const e = AudioEngine.get();
@@ -31,5 +32,10 @@ export function sfx(name: SfxName, delay = 0): void {
     case 'click': S.projectorClick(d, t); break;
     case 'select': S.woodblock(d, t, 79); S.ding(d, t + 0.02, 100); break;
     case 'fall': S.slideWhistle(d, t, false, 0.7); break;
+    case 'bell': S.ding(d, t, 98); S.ding(d, t + 0.09, 98); break;
+    case 'cuckoo': S.ding(d, t, 88); S.ding(d, t + 0.18, 84); break;
+    case 'punch': S.crash(d, t, 0.6); S.woodblock(d, t, 50); break;
+    case 'tick': S.woodblock(d, t, 86); break;
+    case 'stamp': S.bonk(d, t); S.woodblock(d, t + 0.03, 60); break;
   }
 }

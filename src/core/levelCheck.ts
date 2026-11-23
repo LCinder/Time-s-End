@@ -42,9 +42,27 @@ export const DEFAULT_RULES: CheckRules = {
 
 /** Hazards that hit the player at `beat` unless they react (coal lands far away and
  *  hops over several beats, words are platforms: neither needs a reaction at `beat`). */
-const ACTION_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge']);
+const ACTION_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'holePunch', 'crossing', 'cuckoos', 'pendulum']);
 /** Hazards whose arrival should be on the musical grid. */
-const ON_GRID_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'coal']);
+const ON_GRID_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'coal', 'holePunch', 'crossing', 'cuckoos', 'pendulum', 'ticketCheck']);
+/** Events made of several parts, each needing its own reaction (count × spacingBeats). */
+const MULTI_TYPES = new Set(['crossing', 'cuckoos', 'pendulum']);
+
+/** One entry per moment the player must react (multi-part events are split). */
+function actionMoments(events: LevelEvent[]): LevelEvent[] {
+  const out: LevelEvent[] = [];
+  for (const e of events) {
+    if (!ACTION_TYPES.has(e.type)) continue;
+    if (!MULTI_TYPES.has(e.type)) {
+      out.push(e);
+      continue;
+    }
+    const n = Math.max(1, Math.round(typeof e.count === 'number' ? e.count : 1));
+    const step = typeof e.spacingBeats === 'number' ? e.spacingBeats : 2;
+    for (let i = 0; i < n; i++) out.push({ ...e, beat: e.beat + i * step });
+  }
+  return out.sort((a, b) => a.beat - b.beat);
+}
 /** Footing the player gets for free at both edges of a gap (half the body, roughly). */
 const EDGE_LENIENCY_PX = 28;
 
@@ -84,8 +102,14 @@ export function checkLevel(
       if (!sung) add('warning', e, `the ${String(e.object)} is not announced: "${String(e.object).toUpperCase()}" is not sung in the ${rules.announceWithinBeats} beats before it lands`);
     }
 
-    if (e.type === 'gap') {
-      const lengthBeats = Number(e.lengthBeats);
+    if (e.type === 'holePunch') {
+      const bite = e.beat - (typeof e.biteBeats === 'number' ? e.biteBeats : 1.5);
+      const warn = secBetween(bite, e.beat);
+      if (warn < rules.minWarningSec) add('warning', e, `the hole is bitten only ${Math.round(warn * 1000)} ms before Tick reaches it (minimum ${Math.round(rules.minWarningSec * 1000)} ms)`);
+    }
+
+    if (e.type === 'gap' || e.type === 'holePunch') {
+      const lengthBeats = Number(e.lengthBeats ?? 1);
       const gapPx = lengthBeats * ppb - EDGE_LENIENCY_PX;
       const platforms = level.events.some(
         (o) => o.type === 'lyricObject' && o.beat >= e.beat - 2 && o.beat <= e.beat + lengthBeats,
@@ -118,7 +142,7 @@ export function checkLevel(
         if (spawn < 0) add('warning', e, `starts warning at beat ${fmt(spawn)}, before the song begins`, name);
       }
     }
-    const actions = events.filter((e) => ACTION_TYPES.has(e.type)).sort((a, b) => a.beat - b.beat);
+    const actions = actionMoments(events);
     for (let i = 1; i < actions.length; i++) {
       const a = actions[i - 1];
       const b = actions[i];
