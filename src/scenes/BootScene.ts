@@ -8,6 +8,7 @@ import { checkLevel, formatIssue } from '../core/levelCheck';
 import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../core/validate';
 import { FilmPipeline } from '../fx/FilmPipeline';
 import { generateTextures } from '../fx/Textures';
+import type { ArtManifest } from '../core/types';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -70,9 +71,36 @@ export class BootScene extends Phaser.Scene {
       new Promise((r) => setTimeout(r, 2500)),
     ]);
     generateTextures(this);
+    await this.loadArt();
 
     const params = new URLSearchParams(window.location.search);
     this.scene.start('Splash', { skipTo: params.get('level') ?? undefined });
+  }
+
+  /** Hand-drawn pose sheets made with `npm run art` (optional: without them the bosses are drawn by code). */
+  private async loadArt(): Promise<void> {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('art') === '0' || (Game.config.bossArt === false && params.get('art') !== '1')) return;
+    const bosses = [...new Set(Object.values(Game.levels).map((l) => l.boss))];
+    for (const boss of bosses) {
+      try {
+        const res = await fetch(`art/${boss}/manifest.json?v=${Date.now()}`);
+        if (!res.ok) continue;
+        const m = (await res.json()) as ArtManifest;
+        if (!Array.isArray(m.poses) || !m.anchors?.face) continue;
+        for (const pose of m.poses) {
+          for (let v = 0; v < (m.variants || 1); v++) this.load.image(`art:${boss}:${pose}:${v}`, `art/${boss}/${pose}_${v}.png`);
+        }
+        Game.art[boss] = m;
+      } catch {
+        // no art for this boss (or not JSON): keep the code drawing
+      }
+    }
+    if (!Object.keys(Game.art).length) return;
+    await new Promise<void>((done) => {
+      this.load.once('complete', () => done());
+      this.load.start();
+    });
   }
 }
 

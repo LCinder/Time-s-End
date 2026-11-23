@@ -1,0 +1,44 @@
+{
+  "boss": "smokestack",
+  "w": 450,
+  "h": 263,
+  "facing": "right",
+  "poses": [
+    "sneer",
+    "sing",
+    "cackle",
+    "point",
+    "charge",
+    "stare",
+    "fakeSob",
+    "shocked",
+    "panic",
+    "bow"
+  ],
+  "variants": 3,
+  "anchors": {
+    "face": [
+      358,
+      138,
+      45
+    ],
+    "eyes": [
+      358,
+      131
+    ],
+    "mouth": [
+      358,
+      158
+    ],
+    "chimney": [
+      337,
+      15
+    ],
+    "lamp": [
+      360,
+      75
+    ],
+    "ground": 247
+  },
+  "source": "art/smokestack/sheet.jpg"
+}

@@ -7,6 +7,7 @@
   "sfxVolume": 0.9,
   "vintageAudio": true,
   "debug": false,
+  "bossArt": true,
   "levels": ["smokestack"],
   "film": {
     "grain": 1.0,

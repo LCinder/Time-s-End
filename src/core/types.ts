@@ -136,6 +136,26 @@ export interface GameConfig {
   player: PlayerTuning;
   debug: boolean;
   levels: string[];
+  /** Use the hand-drawn pose sheets in public/art/<boss>/ when they exist (`?art=0` in the URL turns it off). */
+  bossArt?: boolean;
+}
+
+/** public/art/<boss>/manifest.json, written by `npm run art`. */
+export interface ArtManifest {
+  boss: string;
+  w: number;
+  h: number;
+  facing: 'right' | 'left';
+  poses: string[];
+  variants: number;
+  anchors: {
+    face: [number, number, number];
+    eyes: [number, number];
+    mouth: [number, number];
+    chimney: [number, number];
+    lamp: [number, number];
+    ground: number;
+  };
 }
 
 export interface ControlsConfig {

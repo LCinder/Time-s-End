@@ -584,7 +584,7 @@ export class ChaseScene extends Phaser.Scene {
         const burst = this.add.image(Math.max(140, cx), GROUND_Y - 30, 'burst_0').setDepth(60).setScale(0.2);
         this.tweens.add({ targets: burst, scale: 2.4, alpha: 0, duration: 800, onComplete: () => burst.destroy() });
       }
-      b.gfx.setVisible(!this.bossCrashed);
+      b.setVisible(!this.bossCrashed);
     } else {
       b.screenX = L.chase.bossFrontX + b.lunge;
       const m = LyricsUI.mouthAt(this.lines, beat);

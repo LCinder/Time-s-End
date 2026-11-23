@@ -8,3 +8,4 @@ Thumbs.db
 tools/song-analysis/.cache/
 __pycache__/
 tools/song-analysis/.venv/
+tools/art/.venv/

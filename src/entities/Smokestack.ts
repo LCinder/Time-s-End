@@ -7,12 +7,29 @@
 // stretches like a top hat when it puffs or coughs.
 
 import Phaser from 'phaser';
+import { Game } from '../core/Game';
+import type { ArtManifest } from '../core/types';
 import type { Viseme } from '../core/visemes';
 import { Acting, faceWarp } from '../rig/Acting';
 import { ACTS, type ActName, type ActPose } from './SmokestackActs';
 import { INK, Ink, PAPER } from '../rig/Ink';
 
 export type ArmPose = 'idle' | 'point' | 'fist' | 'wave';
+
+/**
+ * Hand-drawn mode (`npm run art -- smokestack`): which pose of the sheet plays each act.
+ * Several acts share a pose; the act's own sway, bob and tilt still make them different.
+ */
+export const ACT_POSE: Record<ActName, string> = {
+  tipHat: 'bow', bow: 'bow', timetable: 'stare', cupEar: 'stare', lookBack: 'stare', stare: 'stare',
+  twirl: 'sneer', shimmy: 'sneer', wink: 'sneer', shrug: 'sneer',
+  shush: 'point', beckon: 'point', count: 'point', wagFinger: 'point',
+  patBoiler: 'cackle', rubHands: 'cackle', cackle: 'cackle',
+  yawn: 'sing', doubleTake: 'shocked', sneeze: 'shocked', steamEars: 'charge', fakeSob: 'fakeSob', panic: 'panic',
+};
+/** Poses whose eyes are open (they glow in the dark). */
+const OPEN_EYES = new Set(['sneer', 'stare', 'point', 'charge', 'shocked', 'panic', 'bow']);
+const OPEN_MOUTH = new Set<Viseme>(['open', 'wide', 'round', 'mid']);
 
 const BOILER = 0x2c2c2c;
 const BOILER_HI = 0x4a4a4a;
@@ -80,11 +97,37 @@ export class Smokestack {
   private beat = 0;
   private time = 0;
 
-  constructor(scene: Phaser.Scene) {
+  /** Hand-drawn pose sheet, if one was built and loaded. */
+  private art: ArtManifest | null;
+  private artImg: Phaser.GameObjects.Image | null = null;
+  private artPose = '';
+  private artSnap = 0;
+  private visible = true;
+
+  constructor(private scene: Phaser.Scene) {
     this.gfx = scene.add.graphics();
     this.gfx.setDepth(40);
     this.ink = new Ink(this.gfx);
     this.ink.amp = 1.4;
+    this.art = Game.art.smokestack ?? null;
+  }
+
+  /** The hand-drawn version is the villain; the friendly one in the Bijou stays drawn by code. */
+  get usesArt(): boolean {
+    return this.art !== null && this.villain;
+  }
+
+  setVisible(v: boolean): void {
+    this.visible = v;
+    this.gfx.setVisible(v);
+    this.artImg?.setVisible(v && this.usesArt);
+  }
+
+  /** A point of the pose sheet (canvas px) in screen coords. */
+  private artPoint(ax: number, ay: number): { x: number; y: number } {
+    const a = this.art!.anchors;
+    const s = (100 * this.size) / a.face[2];
+    return { x: this.screenX - 60 * this.size + (ax - a.face[0]) * s, y: this.groundY + this.fallY + (ay - a.ground) * s };
   }
 
   // ───────────────────────── reactions ─────────────────────────
@@ -123,21 +166,25 @@ export class Smokestack {
 
   /** Where the chimney top is (screen coords) – for puffs and projectiles. */
   get chimneyTop(): { x: number; y: number } {
+    if (this.usesArt) return this.artPoint(...this.art!.anchors.chimney);
     return { x: this.screenX - 170 + this.lean * 55, y: this.groundY - 450 + this.fallY };
   }
 
   /** Headlamp position in screen coords (light source in the tunnel). */
   get lamp(): { x: number; y: number } {
+    if (this.usesArt) return this.artPoint(...this.art!.anchors.lamp);
     return { x: this.screenX - 40 + this.lean * 40, y: this.groundY - 322 + this.fallY };
   }
 
   /** Mouth position in screen coords (for breath puffs when shouting). */
   get mouthPos(): { x: number; y: number } {
+    if (this.usesArt) return this.artPoint(...this.art!.anchors.mouth);
     return { x: this.screenX - 60 + this.lean * 20, y: this.groundY - 150 + this.fallY };
   }
 
   /** Where his eyes are on screen (they glow in the dark). */
   get eyesPos(): { x: number; y: number } {
+    if (this.usesArt) return this.artPoint(...this.art!.anchors.eyes);
     return { x: this.screenX + (-60 + this.act.turn * 30) * this.size, y: this.groundY - 240 * this.size + this.fallY };
   }
 
@@ -210,6 +257,12 @@ export class Smokestack {
     const smearX = 1 + this.smear * 0.22;
     this.gfx.setScale((this.size * smearX) / Math.sqrt(stretch), this.size * stretch * (1 - this.smear * 0.06));
 
+    if (this.usesArt) {
+      this.updateArt(dt, time, singing);
+      return;
+    }
+    this.artImg?.setVisible(false);
+
     // hand-drawn redraw on twos (12 fps); an accent pose is held, not redrawn
     this.drawTimer -= dt;
     if (this.drawTimer > 0) return;
@@ -218,6 +271,60 @@ export class Smokestack {
     this.drawTimer = 1 / 12;
     this.ink.seed = Math.floor(time * 12) % 3;
     this.paint();
+  }
+
+  // ───────────────────────── hand-drawn mode ─────────────────────────
+
+  /** Which pose of the sheet to show now. */
+  private choosePose(singing: boolean): string {
+    if (this.fallY > 20) return this.arm === 'wave' ? 'bow' : 'panic';
+    if (this.arm === 'wave') return 'bow';
+    if (this.arm === 'point') return 'point';
+    if (this.arm === 'fist' || this.charge > 0.3) return 'charge';
+    if (this.laughT > 0) return 'cackle';
+    if (this.perf && this.poseW > 0.3) return ACT_POSE[this.perf.name];
+    if (this.shouting) return 'sing';
+    // lip flap: open-mouth syllables sing, the rest sneer between them
+    if (singing) return OPEN_MOUTH.has(this.viseme) ? 'sing' : 'sneer';
+    if (this.nervous > 0.6) return 'shocked';
+    return 'sneer';
+  }
+
+  /** Show the pose sheet with the same chug, lean, squash and smears as the drawn version. */
+  private updateArt(dt: number, time: number, singing: boolean): void {
+    const a = this.art!;
+    if (!this.artImg) {
+      this.artImg = this.scene.add.image(0, 0, `art:smokestack:${a.poses[0]}:0`).setDepth(40);
+      this.artImg.setOrigin(a.anchors.face[0] / a.w, a.anchors.ground / a.h);
+    }
+    const img = this.artImg;
+    img.setVisible(this.visible);
+    let pose = this.choosePose(singing);
+    if (!a.poses.includes(pose)) pose = a.poses[0];
+    // a new pose (not just lip flap) snaps in with a little overshoot, like a cartoon "hit"
+    const flap = (pose === 'sing' || pose === 'sneer') && (this.artPose === 'sing' || this.artPose === 'sneer');
+    if (pose !== this.artPose && !flap) this.artSnap = 1;
+    this.artPose = pose;
+    this.artSnap = Math.max(0, this.artSnap - dt * 7);
+    const variant = Math.floor(time * 8) % Math.max(1, a.variants);
+    img.setTexture(`art:smokestack:${pose}:${variant}`);
+
+    const s = 100 / a.anchors.face[2];
+    const snap = Math.sin(this.artSnap * Math.PI) * 0.08;
+    img.setPosition(this.gfx.x - 60 * this.size, this.gfx.y);
+    img.setRotation(this.gfx.rotation + this.lean * 0.12);
+    img.setScale(this.gfx.scaleX * s * (1 + snap), this.gfx.scaleY * s * (1 - snap * 0.6));
+
+    // the overlay: eyes that burn in the dark
+    const g = this.gfx;
+    g.clear();
+    g.setPosition(0, 0).setRotation(0).setScale(1);
+    if (this.dark > 0.4 && OPEN_EYES.has(pose)) {
+      const e = this.eyesPos;
+      const dx = a.anchors.face[2] * 0.36 * s * this.size;
+      g.fillStyle(0xfff2b0, Math.min(1, (this.dark - 0.4) * 3));
+      for (const sx of [-1, 1]) g.fillCircle(e.x + sx * dx, e.y - 4, 4.5 * this.size);
+    }
   }
 
   // ───────────────────────── drawing ─────────────────────────
@@ -685,5 +792,6 @@ export class Smokestack {
 
   destroy(): void {
     this.gfx.destroy();
+    this.artImg?.destroy();
   }
 }

@@ -1,0 +1,7 @@
+{
+  "comment": "Pose sheet for Old Smokestack (made with an image AI). `npm run art -- smokestack` cuts it into public/art/smokestack/.",
+  "sheet": "sheet.jpg",
+  "order": "columns",
+  "poses": ["sneer", "sing", "cackle", "point", "charge", "stare", "fakeSob", "shocked", "panic", "bow"],
+  "facing": "right"
+}

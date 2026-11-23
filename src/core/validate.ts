@@ -84,6 +84,7 @@ export function validateGameConfig(raw: unknown): GameConfig {
     for (const k of ['masterVolume', 'musicVolume', 'sfxVolume']) c.num(o, k, 'game', { min: 0, max: 1 });
     c.bool(o, 'vintageAudio', 'game');
     c.bool(o, 'debug', 'game');
+    c.bool(o, 'bossArt', 'game', { optional: true });
     c.arr(o, 'levels', 'game');
     const film = c.obj(o.film, 'game.film');
     if (film) for (const k of ['grain', 'scratches', 'vignette', 'weave', 'flicker']) c.num(film, k, 'game.film', { min: 0, max: 3 });

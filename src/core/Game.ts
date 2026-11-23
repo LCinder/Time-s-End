@@ -2,7 +2,7 @@
 
 import { clampOffset, saveCalibration, type CalibrationData } from './Calibration';
 import { loadSettings, writeSave, writeSettings, type SaveData, type Settings } from './Save';
-import type { ControlsConfig, DifficultySpec, GameConfig, LevelData, PlatformLevel, StoryData } from './types';
+import type { ArtManifest, ControlsConfig, DifficultySpec, GameConfig, LevelData, PlatformLevel, StoryData } from './types';
 
 export interface Results {
   levelId: string;
@@ -30,6 +30,8 @@ class GameState {
   difficulties!: Record<string, DifficultySpec>;
   controls!: ControlsConfig;
   levels: Record<string, LevelData> = {};
+  /** Hand-drawn pose sheets that were found and loaded, by boss id. */
+  art: Record<string, ArtManifest> = {};
   platformLevels: Record<string, PlatformLevel> = {};
   story!: StoryData;
   difficulty = 'normal';
