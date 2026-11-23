@@ -39,6 +39,7 @@ export class BootScene extends Phaser.Scene {
       if (!Game.difficulties[Game.difficulty]) Game.difficulty = Object.keys(Game.difficulties)[0];
       Game.startBeat = Number(params.get('beat') ?? 0) || 0;
       if (params.get('debug') === '1') Game.config.debug = true;
+      if (params.get('god') === '1') Game.invincible = true;
 
       for (const id of Game.config.levels) {
         const file = `data/levels/${id}.json`;

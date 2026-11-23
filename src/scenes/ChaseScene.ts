@@ -81,6 +81,7 @@ export class ChaseScene extends Phaser.Scene {
   private flash = 0;
   private overlay: Phaser.GameObjects.Container | null = null;
   private debugText: Phaser.GameObjects.Text | null = null;
+  private godText: Phaser.GameObjects.Text | null = null;
   private showDebug = false;
   private startBeat = 0;
   private dark = 0;
@@ -236,6 +237,18 @@ export class ChaseScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-F1', () => {
       this.showDebug = !this.showDebug;
       this.debugText?.setVisible(this.showDebug);
+    });
+    // testing: F2 makes Tick invincible (only with debug on, or after ?god=1)
+    this.godText = this.add
+      .text(1268, 74, 'INVINCIBLE  (F2)', { fontFamily: 'monospace', fontSize: '15px', color: '#ffe9a8', backgroundColor: '#000000aa' })
+      .setOrigin(1, 0)
+      .setDepth(200)
+      .setVisible(Game.invincible);
+    this.input.keyboard?.on('keydown-F2', () => {
+      if (!Game.config.debug && !Game.invincible) return;
+      Game.invincible = !Game.invincible;
+      this.godText?.setVisible(Game.invincible);
+      this.showBanner(Game.invincible ? 'INVINCIBLE\nhits cost nothing' : 'HITS COUNT AGAIN', 1.2);
     });
     this.input.keyboard?.on('keydown-R', () => {
       if (this.state === 'play' || this.state === 'paused') this.restart(false, this.rehearsal ? this.startCue : 0, this.rehearsal);
@@ -619,7 +632,8 @@ export class ChaseScene extends Phaser.Scene {
     if (this.state !== 'play') return;
     if (!ignoreInvuln && (this.player.invulnerable > 0 || this.player.isDashing)) return;
     if (ignoreInvuln && this.player.invulnerable > 0 && source !== 'fall') return;
-    this.hits++;
+    // testing (?god=1 / F2): everything reacts as usual, but the hit is not counted
+    if (!Game.invincible) this.hits++;
     this.combo = 0;
     this.player.invulnerable = Game.config.player.invulnerableMs;
     sfx(source === 'fall' ? 'fall' : 'hit');

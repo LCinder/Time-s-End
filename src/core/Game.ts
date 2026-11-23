@@ -37,6 +37,8 @@ class GameState {
   difficulty = 'normal';
   /** Practice: start the level at this beat (URL ?beat=64). */
   startBeat = 0;
+  /** Testing: hits and falls cost nothing, so a whole level can be played through (`?god=1`, or F2 with debug on). */
+  invincible = false;
   lastResults: Results | null = null;
   /** This browser's latency tweak, added on top of game.json (see Calibration.ts). */
   calibration: CalibrationData = { audioOffsetMs: 0, inputOffsetMs: 0 };

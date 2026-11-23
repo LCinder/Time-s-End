@@ -138,12 +138,12 @@ export function fillerAct(last: ActName | null, rnd: () => number = Math.random)
 
 // ── the puppet (MAIN.md §8.3): the face and the gaze of each act (expressions are in FaceRig.ts) ──
 
-export type Gaze = 'tick' | 'camera' | 'up' | 'back' | 'down' | 'side';
+export type Gaze = 'tick' | 'camera' | 'up' | 'back' | 'down' | 'side' | 'paper';
 
 /** The puppet's face and where it looks for each act of the repertoire. */
 export const ACT_FACE: Record<ActName, { face: string; gaze?: Gaze }> = {
   tipHat: { face: 'smug', gaze: 'camera' },
-  timetable: { face: 'scheme', gaze: 'down' },
+  timetable: { face: 'scheme', gaze: 'camera' },
   twirl: { face: 'smirk', gaze: 'camera' },
   shush: { face: 'smirk', gaze: 'camera' },
   cupEar: { face: 'listen', gaze: 'side' },

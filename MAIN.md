@@ -18,12 +18,13 @@ Abre `http://localhost:5173`. Para la versión publicable: `npm run build` (gene
 | `?beat=200` | Empieza el nivel en ese beat (modo práctica) |
 | `?diff=hard` | Fuerza una dificultad |
 | `?debug=1` | Muestra el panel de depuración (beat, compás, próximos eventos…) |
+| `?god=1` | **Modo prueba:** los golpes y las caídas no cuentan, así que puedes jugar el nivel entero (también con `F2` si la depuración está activada) |
 
 Ejemplo: `http://localhost:5173/?level=smokestack&beat=204&debug=1` empieza justo antes del túnel.
 
 **Jugar el capítulo 1 completo:** en el título, **NEW GAME** → elige una lata de película → introducción → el Bijou. **CONTINUE** te devuelve a donde lo dejaste.
 
-**Teclas en partida:** `F1` muestra u oculta la depuración · `R` reinicia · `Esc` pausa. En el Bijou, `▲` mira y usa las cosas.
+**Teclas en partida:** `F1` muestra u oculta la depuración · `F2` activa o quita el modo prueba sin vidas (con la depuración activada) · `R` reinicia · `Esc` pausa. En el Bijou, `▲` mira y usa las cosas.
 Con la depuración visible, `[` / `]` (o `-` / `+`) mueven el desfase de audio ±5 ms en caliente; el valor se guarda como la calibración.
 
 **Calibración:** en el título, `↑/↓` elige entre **PLAY** y **CALIBRATE** (ver §10.1). Conviene calibrar una vez en cada ordenador (y cada vez que cambies de altavoces o auriculares, sobre todo si son Bluetooth).

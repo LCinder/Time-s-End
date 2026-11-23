@@ -65,6 +65,8 @@ interface Hand {
   angle: number;
   fist: boolean;
   finger: boolean;
+  /** The far arm stays out of sight behind the boiler. */
+  hidden?: boolean;
 }
 
 /** Where everything of the body picture lands in the boss's local coords (nose at ground = 0, 0). */
@@ -462,6 +464,7 @@ export class Smokestack {
   /** Where to look right now (an act can override the director's choice). */
   private currentGaze(): Gaze {
     if (this.arm === 'point') return 'up';
+    if (this.perf?.name === 'timetable' && this.poseW > 0.3 && (this.time - this.perf.start) / this.perf.dur < 0.62) return 'paper';
     if (this.perf && this.poseW > 0.3) return ACT_FACE[this.perf.name].gaze ?? this.gaze;
     return this.gaze;
   }
@@ -477,7 +480,11 @@ export class Smokestack {
     else if (laughing) name = 'cackle';
     else if (this.arm === 'point') name = 'glee';
     else if (this.arm === 'fist' || this.charge > 0.3) name = 'rage';
-    else if (this.perf && this.poseW > 0.3) name = ACT_FACE[this.perf.name].face;
+    else if (this.perf && this.poseW > 0.3) {
+      name = ACT_FACE[this.perf.name].face;
+      // the timetable: scheming while reading it, then a smirk at you ("right on time")
+      if (this.perf.name === 'timetable' && (this.time - this.perf.start) / this.perf.dur > 0.62) name = 'smirk';
+    }
     else if (this.nervous > 0.5) name = 'worry';
     else if (singing) name = this.singFace;
     const t = expression(name);
@@ -503,6 +510,8 @@ export class Smokestack {
       back: [-1, -0.1],
       down: [0.15, 0.85],
       side: [0.95, -0.05],
+      // reading the timetable held to the left: the eyes run along the rows
+      paper: [-0.85 + Math.sin(this.time * 5) * 0.18, 0.05 + ((this.time * 0.8) % 1) * 0.35],
     };
     const own = name in { scheme: 1, listen: 1, suspicious: 1 } ? [t.gazeX, t.gazeY] : null;
     let [gx, gy] = own && gaze === 'tick' ? own : dirs[gaze];
@@ -607,6 +616,8 @@ export class Smokestack {
 
   /** Put the glove picture at the end of the hose arm, pointing along it. */
   private placeGlove(img: Phaser.GameObjects.Image, h: Hand, side: 'front' | 'back'): void {
+    img.setVisible(!h.hidden);
+    if (h.hidden) return;
     const type = h.finger ? 'glovePoint' : h.fist ? 'gloveFist' : 'gloveOpen';
     if (type !== this.gloveType[side]) {
       this.gloveType[side] = type;
@@ -995,6 +1006,48 @@ export class Smokestack {
     k.circle(cx, cy, r * 0.25, 0x9a9a9a, 3);
   }
 
+  /**
+   * The puppet's timetable: unfolds when it comes out and folds when it goes away,
+   * held by one edge (the glove covers it), flutters in the wind and curls at the top.
+   */
+  private paintTimetable(hx: number, hy: number, r: number): void {
+    const k = this.ink;
+    const t = this.perf ? (this.time - this.perf.start) / this.perf.dur : 1;
+    const easeOutBack = (x: number) => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
+    const open = t < 0.18 ? easeOutBack(Math.min(1, t / 0.18)) : t > 0.84 ? Math.max(0, (1 - t) / 0.16) : 1;
+    if (open <= 0.02) return;
+    const w = r * 0.95 * open;
+    const h = r * 1.2;
+    const flutter = Math.sin(this.time * 3.1) * 0.05 + Math.sin(this.time * 7.3) * 0.015;
+    const c = Math.cos(flutter);
+    const sn = Math.sin(flutter);
+    // the paper hangs from the hand towards the left, rotated by the flutter around the grip
+    const P = (x: number, y: number) => ({ x: hx + x * c - y * sn, y: hy + x * sn + y * c });
+    const top = -h * 0.75;
+    const bot = h * 0.25;
+    const curl = 6 + Math.sin(this.time * 4) * 3;
+    const pts = [P(8, top), P(-w * 0.5, top - curl), P(-w, top + 2), P(-w + 3, bot), P(-w * 0.5, bot + 4), P(8, bot)];
+    k.poly(pts, 0xe8e1d0, 3);
+    // a fold line down the middle, a header and the rows of times
+    if (open > 0.6) {
+      const a = P(-w * 0.5, top - curl + 4);
+      const b = P(-w * 0.5, bot);
+      k.line(a.x, a.y, b.x, b.y, 1.5, 0xb8b0a0);
+      const hd1 = P(-w + 8, top + 10);
+      const hd2 = P(-6, top + 8);
+      k.line(hd1.x, hd1.y, hd2.x, hd2.y, 5, 0x3a3630);
+      for (let row = 0; row < 6; row++) {
+        const y = top + 24 + row * ((bot - top - 30) / 6);
+        const l1 = P(-w + 8, y);
+        const l2 = P(-w * 0.55, y);
+        const l3 = P(-w * 0.42, y);
+        const l4 = P(-8, y);
+        k.line(l1.x, l1.y, l2.x, l2.y, 2, 0x5a5650);
+        k.line(l3.x, l3.y, l4.x, l4.y, 2, 0x5a5650);
+      }
+    }
+  }
+
   private paintArm(front: boolean): Hand {
     const k = this.ink;
     const time = this.time;
@@ -1091,6 +1144,23 @@ export class Smokestack {
       const s = f.ry / 104;
       hx = f.x + (hx + 60) * s;
       hy = f.y + (hy + 210) * s;
+      const charging = (this.arm === 'fist' || this.charge > 0.3) && !laughing && this.fallY === 0;
+      if (front && charging) {
+        // the charge: a fist thrust forward under the chin, shaking at Tick
+        hx = f.x + f.rx * 1.75 + Math.sin(time * 34) * 5 * this.charge;
+        hy = f.y + f.ry * 1.05 + Math.sin(time * 27) * 4 * this.charge;
+        fist = true;
+      }
+      if (front && this.pose.timetable && this.poseW > 0.3) {
+        // the timetable is read held out to the side of the face, at eye level
+        hx = f.x - f.rx * 1.55;
+        hy = f.y - f.ry * 0.15 + Math.sin(beat * Math.PI) * 3;
+      }
+      if (!front) {
+        // the far arm only shows when its hand comes round in front of the face
+        const show = hx > f.x + f.rx * 0.3 && !charging;
+        if (!show) return { x: hx, y: hy, angle: 0, fist, finger: false, hidden: true };
+      }
       const reach = f.ry * 3.3;
       const d = Math.hypot(hx - shX, hy - shY);
       if (d > reach) {
@@ -1157,7 +1227,15 @@ export class Smokestack {
       const a = -Math.PI / 2 + (f - (Math.max(1, fingers) - 1) / 2) * 0.32;
       k.hose(hx, hy - 6, hx + Math.cos(a) * 14, hy - 6 + Math.sin(a) * 14, hx + Math.cos(a) * 28, hy - 6 + Math.sin(a) * 28, 7, PAPER, 2);
     }
-    if (front && this.poseW > 0.3) {
+    if (front && this.poseW > 0.3 && geo) {
+      if (this.pose.hanky) {
+        // a hanky hanging from the glove, swaying
+        const sw = Math.sin(time * 5) * 5;
+        const r = geo.face.ry;
+        k.poly([{ x: hx - r * 0.12, y: hy - r * 0.08 }, { x: hx + r * 0.32, y: hy }, { x: hx + r * 0.2 + sw, y: hy + r * 0.55 }, { x: hx - r * 0.18 + sw * 0.7, y: hy + r * 0.4 }], PAPER, 3);
+      }
+      if (this.pose.timetable) this.paintTimetable(hx, hy, geo.face.ry);
+    } else if (front && this.poseW > 0.3) {
       if (this.pose.hanky) {
         // a hanky for crocodile tears
         k.poly([{ x: hx - 8, y: hy - 6 }, { x: hx + 26, y: hy + 4 }, { x: hx + 12, y: hy + 44 }, { x: hx - 14, y: hy + 30 }], PAPER, 3);
