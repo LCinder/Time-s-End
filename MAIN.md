@@ -474,14 +474,20 @@ Para que el nivel se sienta como un recorrido y no como un fondo que se repite, 
   - De noche los ojos del jefe también brillan.
 - **Túneles de verdad:** si el nivel lo pide (`"tunnel": "brick"`), cada evento `tunnel` se convierte en un túnel con portal de piedra a la entrada, paredes de ladrillo, vigas de madera, faroles colgando que se balancean al ritmo y otro portal a la salida. Tick entra por el portal justo en el beat del evento.
 
-### 8.3 Futuro (mezcla)
-- El autor puede aportar imágenes de enemigos. A partir de ellas se generan vistas y poses, y se integran en el rig o como *sprite sheets*.
-- Opcionalmente, fondos generados con IA.
-- **Idea aparcada (dibujos del autor):** el autor dibuja los personajes (PNG transparente, contorno negro grueso, piezas móviles en capas separadas, mirando a la derecha) y el juego los anima:
-  - el cuerpo como `Phaser.GameObjects.Mesh` cuya cuadrícula de vértices pasa por la misma deformación `Ink.warp`, para mantener el cuerpo de goma;
-  - ruedas, bielas, campana, etc. como piezas de un rig con su punto de giro;
-  - la cara, o bien por código encima del dibujo, o bien con piezas dibujadas por el autor (ojos abiertos/cerrados, 4–6 bocas, cejas) sincronizadas con la letra.
-  - Prueba piloto propuesta: el cuerpo de Old Smokestack con la cara vacía.
+### 8.3 Personajes dibujados: la marioneta por capas ✅ (prototipo con Old Smokestack)
+Sin animador, la forma más fluida de usar dibujos de verdad es una **marioneta**: el personaje se dibuja una sola vez, separado en piezas, y el código lo anima de forma continua, a 60 fotogramas por segundo.
+- **Lo que se dibuja (una hoja de piezas):** el cuerpo sin brazos y con la cara vacía, el sombrero, el bigote, tres guantes (abierto, puño, señalando) y una rueda. El prototipo actual está hecho con una IA de imágenes (`art/smokestack/parts.jpg`); el prompt está en el historial del proyecto y sirve para cualquier jefe.
+- **`npm run art -- <jefe>`** lee `art/<jefe>/art.json` (un punto dentro de cada pieza y las medidas del cuerpo: cara, ruedas, chimenea, hombros, suelo, morro). Recorta cada pieza, quita el fondo blanco, las amplía al doble y escribe `public/art/<jefe>/` con un `manifest.json`. El juego lo carga solo; `"bossArt": false` en `game.json` (o `?art=0` en la URL) vuelve al dibujo por código.
+- **Cómo se anima (todo continuo, nada salta):**
+  - **el cuerpo** es una malla (`Phaser.GameObjects.Mesh`) cuyos vértices pasan cada fotograma por la misma deformación de goma que el dibujo por código: respira, se estira en los acentos, se inclina al embestir y ondula al cantar;
+  - **las ruedas** giran y la biela sigue a las manivelas;
+  - **la cara** se dibuja por código encima del frente redondo: gira en falso 3D, parpadea, los ojos siguen a Tick y la boca pasa de una sílaba a otra fundiéndose (la forma se interpola, no se cambia de imagen);
+  - **el bigote** (imagen) va pegado a la cara y aletea al cantar;
+  - **el sombrero** (imagen) va sobre un muelle: bota en cada beat, salta con el silbato y lo levanta la mano al saludar;
+  - **los brazos** son mangueras por código con los guantes dibujados al final; la mano viaja a cada gesto sobre un muelle con un poco de rebote.
+- Las 23 actuaciones, el director y la sincronía labial son los mismos que en el dibujo por código. El Smokestack amable del Bijou sigue dibujado por código.
+- Se probó antes una hoja de 10 poses cambiando de imagen: se veía falso, porque faltan los dibujos intermedios. La marioneta lo sustituye.
+- **Siguiente paso:** el dibujo definitivo de un dibujante (las mismas piezas, en alta resolución) y, si hace falta, piezas extra de la cara.
 
 ---
 

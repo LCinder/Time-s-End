@@ -1,7 +1,24 @@
 {
-  "comment": "Pose sheet for Old Smokestack (made with an image AI). `npm run art -- smokestack` cuts it into public/art/smokestack/.",
-  "sheet": "sheet.jpg",
-  "order": "columns",
-  "poses": ["sneer", "sing", "cackle", "point", "charge", "stare", "fakeSob", "shocked", "panic", "bow"],
-  "facing": "right"
+  "comment": "Old Smokestack as a puppet: one sheet of parts (made with an image AI). `npm run art -- smokestack` cuts it into public/art/smokestack/. Anchors are in sheet pixels.",
+  "type": "parts",
+  "sheet": "parts.jpg",
+  "scale": 2,
+  "parts": {
+    "body": [380, 260],
+    "hat": [772, 130],
+    "mustache": [830, 330],
+    "gloveOpen": [255, 560],
+    "gloveFist": [485, 560],
+    "glovePoint": [700, 560],
+    "wheel": [952, 560]
+  },
+  "anchors": {
+    "face": [576, 243, 41, 64],
+    "wheels": [[182, 358, 59], [310, 360, 59], [434, 360, 59]],
+    "frontWheel": [527, 387, 28],
+    "chimney": [527, 104, 187],
+    "shoulders": [[500, 285], [330, 240]],
+    "ground": 423,
+    "noseX": 669
+  }
 }

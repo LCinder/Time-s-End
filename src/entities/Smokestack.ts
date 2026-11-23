@@ -16,20 +16,70 @@ import { INK, Ink, PAPER } from '../rig/Ink';
 
 export type ArmPose = 'idle' | 'point' | 'fist' | 'wave';
 
-/**
- * Hand-drawn mode (`npm run art -- smokestack`): which pose of the sheet plays each act.
- * Several acts share a pose; the act's own sway, bob and tilt still make them different.
- */
-export const ACT_POSE: Record<ActName, string> = {
-  tipHat: 'bow', bow: 'bow', timetable: 'stare', cupEar: 'stare', lookBack: 'stare', stare: 'stare',
-  twirl: 'sneer', shimmy: 'sneer', wink: 'sneer', shrug: 'sneer',
-  shush: 'point', beckon: 'point', count: 'point', wagFinger: 'point',
-  patBoiler: 'cackle', rubHands: 'cackle', cackle: 'cackle',
-  yawn: 'sing', doubleTake: 'shocked', sneeze: 'shocked', steamEars: 'charge', fakeSob: 'fakeSob', panic: 'panic',
+/** [width, opening, top teeth, bottom teeth] of each mouth shape (code face, 104 px radius). */
+const MOUTH_SHAPES: Record<Viseme, [number, number, boolean, boolean]> = {
+  rest: [34, 0, false, false],
+  closed: [36, 0, false, false],
+  teeth: [34, 10, true, false],
+  open: [32, 14, true, false],
+  wide: [46, 28, true, false],
+  mid: [44, 16, true, true],
+  round: [26, 26, false, false],
+  small: [17, 13, false, false],
 };
-/** Poses whose eyes are open (they glow in the dark). */
-const OPEN_EYES = new Set(['sneer', 'stare', 'point', 'charge', 'shocked', 'panic', 'bow']);
-const OPEN_MOUTH = new Set<Viseme>(['open', 'wide', 'round', 'mid']);
+
+// ── puppet mode: a body picture + parts from `npm run art -- smokestack` ──
+/** Half-height of the face plate on screen (local px): sets the puppet's size. */
+const FACE_RY = 76;
+/** Local x of the nose (cowcatcher tip), as in the code drawing. */
+const NOSE_X = 46;
+
+interface PuppetGeo {
+  k: number;
+  face: { x: number; y: number; rx: number; ry: number };
+  chimney: { x: number; top: number; base: number; capW: number };
+  shoulders: { x: number; y: number }[];
+  wheels: { x: number; y: number; r: number; spin: number }[];
+}
+
+interface Puppet {
+  box: Phaser.GameObjects.Container;
+  gBack: Phaser.GameObjects.Graphics;
+  gMid: Phaser.GameObjects.Graphics;
+  gFront: Phaser.GameObjects.Graphics;
+  rest: { v: Phaser.Geom.Mesh.Vertex; x: number; y: number }[];
+  wheels: Phaser.GameObjects.Image[];
+  mustache: Phaser.GameObjects.Image;
+  hat: Phaser.GameObjects.Image;
+  gloveF: Phaser.GameObjects.Image;
+  gloveB: Phaser.GameObjects.Image;
+}
+
+interface Hand {
+  x: number;
+  y: number;
+  angle: number;
+  fist: boolean;
+  finger: boolean;
+}
+
+/** Where everything of the body picture lands in the boss's local coords (nose at ground = 0, 0). */
+function puppetGeometry(a: ArtManifest): PuppetGeo {
+  const A = a.anchors;
+  const k = FACE_RY / A.face[3];
+  const L = (px: number, py: number) => ({ x: (px - A.noseX) * k + NOSE_X, y: (py - A.ground) * k });
+  const f = L(A.face[0], A.face[1]);
+  const top = L(A.chimney[0], A.chimney[1]);
+  const big = A.wheels.map(([x, y, r]) => ({ ...L(x, y), r: r * k, spin: 1 }));
+  const fw = A.frontWheel;
+  return {
+    k,
+    face: { x: f.x, y: f.y, rx: A.face[2] * k, ry: A.face[3] * k },
+    chimney: { x: top.x, top: top.y, base: L(0, A.chimney[2]).y, capW: 130 * k },
+    shoulders: A.shoulders.map(([x, y]) => L(x, y)),
+    wheels: fw ? [...big, { ...L(fw[0], fw[1]), r: fw[2] * k, spin: A.wheels[0][2] / fw[2] }] : big,
+  };
+}
 
 const BOILER = 0x2c2c2c;
 const BOILER_HI = 0x4a4a4a;
@@ -97,12 +147,24 @@ export class Smokestack {
   private beat = 0;
   private time = 0;
 
-  /** Hand-drawn pose sheet, if one was built and loaded. */
+  /** Puppet parts (`npm run art -- smokestack`), if a sheet was built and loaded. */
   private art: ArtManifest | null;
-  private artImg: Phaser.GameObjects.Image | null = null;
-  private artPose = '';
-  private artSnap = 0;
+  private geo: PuppetGeo | null;
+  private puppet: Puppet | null = null;
   private visible = true;
+  private dt = 1 / 60;
+  /** the mouth shape melts from one syllable into the next */
+  private mw = 34;
+  private moh = 0;
+  /** hands, hat and gloves move on springs: nothing ever jumps */
+  private hands = { front: { x: 0, y: 0, vx: 0, vy: 0, init: false }, back: { x: 0, y: 0, vx: 0, vy: 0, init: false } };
+  private hatS = { y: 0, vy: 0, r: 0, vr: 0 };
+  private gloveType = { front: '', back: '' };
+  private glovePop = { front: 0, back: 0 };
+  private lastWhole = -1;
+  /** where the warp finds the smokestack and the boiler (the code drawing by default) */
+  private chim = { x: -170, base: -296 };
+  private boilerBox = { x0: -620, x1: -30, yTop: -310, yBot: -100 };
 
   constructor(private scene: Phaser.Scene) {
     this.gfx = scene.add.graphics();
@@ -110,24 +172,23 @@ export class Smokestack {
     this.ink = new Ink(this.gfx);
     this.ink.amp = 1.4;
     this.art = Game.art.smokestack ?? null;
+    this.geo = this.art ? puppetGeometry(this.art) : null;
   }
 
-  /** The hand-drawn version is the villain; the friendly one in the Bijou stays drawn by code. */
-  get usesArt(): boolean {
-    return this.art !== null && this.villain;
+  /** The puppet is the villain; the friendly Smokestack in the Bijou stays drawn by code. */
+  get usesPuppet(): boolean {
+    return this.geo !== null && this.villain;
   }
 
   setVisible(v: boolean): void {
     this.visible = v;
-    this.gfx.setVisible(v);
-    this.artImg?.setVisible(v && this.usesArt);
+    this.gfx.setVisible(v && !this.usesPuppet);
+    this.puppet?.box.setVisible(v && this.usesPuppet);
   }
 
-  /** A point of the pose sheet (canvas px) in screen coords. */
-  private artPoint(ax: number, ay: number): { x: number; y: number } {
-    const a = this.art!.anchors;
-    const s = (100 * this.size) / a.face[2];
-    return { x: this.screenX - 60 * this.size + (ax - a.face[0]) * s, y: this.groundY + this.fallY + (ay - a.ground) * s };
+  /** A point in local coords (nose at ground) on screen. */
+  private localPoint(lx: number, ly: number): { x: number; y: number } {
+    return { x: this.screenX + lx * this.size, y: this.groundY + ly * this.size + this.fallY };
   }
 
   // ───────────────────────── reactions ─────────────────────────
@@ -166,25 +227,28 @@ export class Smokestack {
 
   /** Where the chimney top is (screen coords) – for puffs and projectiles. */
   get chimneyTop(): { x: number; y: number } {
-    if (this.usesArt) return this.artPoint(...this.art!.anchors.chimney);
+    if (this.geo && this.usesPuppet) return this.localPoint(this.geo.chimney.x + this.lean * 55, this.geo.chimney.top - 100);
     return { x: this.screenX - 170 + this.lean * 55, y: this.groundY - 450 + this.fallY };
   }
 
   /** Headlamp position in screen coords (light source in the tunnel). */
   get lamp(): { x: number; y: number } {
-    if (this.usesArt) return this.artPoint(...this.art!.anchors.lamp);
+    if (this.geo && this.usesPuppet) return this.localPoint(this.geo.face.x + this.lean * 40, this.geo.face.y - this.geo.face.ry - 12);
     return { x: this.screenX - 40 + this.lean * 40, y: this.groundY - 322 + this.fallY };
   }
 
   /** Mouth position in screen coords (for breath puffs when shouting). */
   get mouthPos(): { x: number; y: number } {
-    if (this.usesArt) return this.artPoint(...this.art!.anchors.mouth);
+    if (this.geo && this.usesPuppet) return this.localPoint(this.geo.face.x, this.geo.face.y + this.geo.face.ry * 0.45);
     return { x: this.screenX - 60 + this.lean * 20, y: this.groundY - 150 + this.fallY };
   }
 
   /** Where his eyes are on screen (they glow in the dark). */
   get eyesPos(): { x: number; y: number } {
-    if (this.usesArt) return this.artPoint(...this.art!.anchors.eyes);
+    if (this.geo && this.usesPuppet) {
+      const f = this.geo.face;
+      return this.localPoint(f.x + this.act.turn * f.rx * 0.3, f.y - f.ry * 0.27);
+    }
     return { x: this.screenX + (-60 + this.act.turn * 30) * this.size, y: this.groundY - 240 * this.size + this.fallY };
   }
 
@@ -257,11 +321,21 @@ export class Smokestack {
     const smearX = 1 + this.smear * 0.22;
     this.gfx.setScale((this.size * smearX) / Math.sqrt(stretch), this.size * stretch * (1 - this.smear * 0.06));
 
-    if (this.usesArt) {
-      this.updateArt(dt, time, singing);
+    this.dt = dt;
+    // the mouth shape melts from one syllable into the next
+    const laughing = this.laughT > 0.05;
+    const vis: Viseme = laughing || this.shouting ? 'wide' : this.mouth < 0.12 ? 'rest' : this.viseme;
+    const [tw, toh] = this.shouting ? [32, 40] : MOUTH_SHAPES[vis];
+    const m = Math.min(1, dt * 28);
+    this.mw += (tw - this.mw) * m;
+    this.moh += (toh - this.moh) * m;
+
+    if (this.usesPuppet) {
+      this.updatePuppet();
       return;
     }
-    this.artImg?.setVisible(false);
+    this.puppet?.box.setVisible(false);
+    this.gfx.setVisible(this.visible);
 
     // hand-drawn redraw on twos (12 fps); an accent pose is held, not redrawn
     this.drawTimer -= dt;
@@ -273,58 +347,148 @@ export class Smokestack {
     this.paint();
   }
 
-  // ───────────────────────── hand-drawn mode ─────────────────────────
+  // ───────────────────────── puppet mode ─────────────────────────
 
-  /** Which pose of the sheet to show now. */
-  private choosePose(singing: boolean): string {
-    if (this.fallY > 20) return this.arm === 'wave' ? 'bow' : 'panic';
-    if (this.arm === 'wave') return 'bow';
-    if (this.arm === 'point') return 'point';
-    if (this.arm === 'fist' || this.charge > 0.3) return 'charge';
-    if (this.laughT > 0) return 'cackle';
-    if (this.perf && this.poseW > 0.3) return ACT_POSE[this.perf.name];
-    if (this.shouting) return 'sing';
-    // lip flap: open-mouth syllables sing, the rest sneer between them
-    if (singing) return OPEN_MOUTH.has(this.viseme) ? 'sing' : 'sneer';
-    if (this.nervous > 0.6) return 'shocked';
-    return 'sneer';
+  private buildPuppet(): Puppet {
+    const a = this.art!;
+    const g = this.geo!;
+    const s = this.scene;
+    const A = a.anchors;
+    const box = s.add.container(0, 0).setDepth(40);
+    const gBack = s.add.graphics();
+    const gloveB = s.add.image(0, 0, 'art:smokestack:gloveFist').setOrigin(0.5, 0.82);
+    const key = 'art:smokestack:body';
+    const mesh = s.add.mesh(0, 0, key);
+    Phaser.Geom.Mesh.GenerateGridVerts({ mesh, texture: key, widthSegments: 20, heightSegments: 12 });
+    mesh.hideCCW = false;
+    (mesh as unknown as { preUpdate(t: number, d: number): void }).preUpdate(0, 0);
+    const W = a.parts.body.w;
+    const H = a.parts.body.h;
+    const rest = mesh.vertices.map((v) => {
+      const px = (v.x + 0.5) * W;
+      const py = (0.5 - v.y) * H;
+      return { v, x: (px - A.noseX) * g.k + NOSE_X, y: (py - A.ground) * g.k };
+    });
+    const wheelR = a.parts.wheel.w / 2 - 12;
+    const wheels = g.wheels.map((w) => s.add.image(0, 0, 'art:smokestack:wheel').setScale((w.r * 1.05) / wheelR));
+    const gMid = s.add.graphics();
+    const mustache = s.add.image(0, 0, 'art:smokestack:mustache').setOrigin(0.5, 0.3);
+    const hat = s.add.image(0, 0, 'art:smokestack:hat').setOrigin(0.5, 0.9);
+    hat.setScale((g.chimney.capW * 1.7) / a.parts.hat.w);
+    const gFront = s.add.graphics();
+    const gloveF = s.add.image(0, 0, 'art:smokestack:gloveOpen').setOrigin(0.5, 0.82);
+    box.add([gBack, gloveB, mesh, ...wheels, gMid, mustache, hat, gFront, gloveF]);
+    // the warp finds the smokestack and the boiler of this picture
+    this.chim = { x: g.chimney.x, base: g.chimney.base };
+    const f = g.face;
+    this.boilerBox = { x0: f.x - f.ry * 6, x1: f.x - f.rx * 0.6, yTop: f.y - f.ry * 1.1, yBot: f.y + f.ry * 1.1 };
+    return { box, gBack, gMid, gFront, rest, wheels, mustache, hat, gloveF, gloveB };
   }
 
-  /** Show the pose sheet with the same chug, lean, squash and smears as the drawn version. */
-  private updateArt(dt: number, time: number, singing: boolean): void {
-    const a = this.art!;
-    if (!this.artImg) {
-      this.artImg = this.scene.add.image(0, 0, `art:smokestack:${a.poses[0]}:0`).setDepth(40);
-      this.artImg.setOrigin(a.anchors.face[0] / a.w, a.anchors.ground / a.h);
+  /** The puppet, redrawn every frame (60 fps) so every movement is continuous. */
+  private updatePuppet(): void {
+    if (!this.puppet) this.puppet = this.buildPuppet();
+    const P = this.puppet;
+    const g = this.geo!;
+    this.gfx.setVisible(false);
+    P.box.setVisible(this.visible);
+    P.box.setPosition(this.gfx.x, this.gfx.y).setRotation(this.gfx.rotation).setScale(this.gfx.scaleX, this.gfx.scaleY);
+    this.ink.seed = 0;
+    this.ink.amp = 0.5;
+    this.setupWarp();
+    const warp = this.ink.warp!;
+    // the body: every vertex of the picture goes through the rubber warp
+    for (const r of P.rest) {
+      const p = warp(r.x, r.y);
+      r.v.vx = p.x;
+      r.v.vy = p.y;
     }
-    const img = this.artImg;
-    img.setVisible(this.visible);
-    let pose = this.choosePose(singing);
-    if (!a.poses.includes(pose)) pose = a.poses[0];
-    // a new pose (not just lip flap) snaps in with a little overshoot, like a cartoon "hit"
-    const flap = (pose === 'sing' || pose === 'sneer') && (this.artPose === 'sing' || this.artPose === 'sneer');
-    if (pose !== this.artPose && !flap) this.artSnap = 1;
-    this.artPose = pose;
-    this.artSnap = Math.max(0, this.artSnap - dt * 7);
-    const variant = Math.floor(time * 8) % Math.max(1, a.variants);
-    img.setTexture(`art:smokestack:${pose}:${variant}`);
-
-    const s = 100 / a.anchors.face[2];
-    const snap = Math.sin(this.artSnap * Math.PI) * 0.08;
-    img.setPosition(this.gfx.x - 60 * this.size, this.gfx.y);
-    img.setRotation(this.gfx.rotation + this.lean * 0.12);
-    img.setScale(this.gfx.scaleX * s * (1 + snap), this.gfx.scaleY * s * (1 - snap * 0.6));
-
-    // the overlay: eyes that burn in the dark
-    const g = this.gfx;
-    g.clear();
-    g.setPosition(0, 0).setRotation(0).setScale(1);
-    if (this.dark > 0.4 && OPEN_EYES.has(pose)) {
-      const e = this.eyesPos;
-      const dx = a.anchors.face[2] * 0.36 * s * this.size;
-      g.fillStyle(0xfff2b0, Math.min(1, (this.dark - 0.4) * 3));
-      for (const sx of [-1, 1]) g.fillCircle(e.x + sx * dx, e.y - 4, 4.5 * this.size);
+    // wheels spin, the connecting rod follows the crank pins
+    g.wheels.forEach((w, i) => {
+      const p = warp(w.x, w.y);
+      P.wheels[i].setPosition(p.x, p.y).setRotation(this.wheelAngle * w.spin);
+    });
+    const k = this.ink;
+    const prevG = k.g;
+    P.gBack.clear();
+    P.gMid.clear();
+    P.gFront.clear();
+    k.g = P.gBack;
+    this.placeGlove(P.gloveB, this.paintArm(false), 'back');
+    k.g = P.gMid;
+    const big = g.wheels.slice(0, 3);
+    if (big.length >= 2) {
+      const pins = big.map((w) => ({ x: w.x + Math.cos(this.wheelAngle) * w.r * 0.48, y: w.y + Math.sin(this.wheelAngle) * w.r * 0.48 }));
+      const a0 = pins[0];
+      const a1 = pins[pins.length - 1];
+      k.line(a0.x, a0.y, a1.x, a1.y, 17, INK);
+      k.line(a0.x, a0.y, a1.x, a1.y, 10, 0xa8a8a8);
+      for (const p of pins) k.circle(p.x, p.y, 7, PAPER, 3);
     }
+    this.paintPuppetFace(P);
+    this.updateHat(P, warp);
+    k.g = P.gFront;
+    this.placeGlove(P.gloveF, this.paintArm(true), 'front');
+    k.g = prevG;
+    k.amp = 1.4;
+    this.ink.warp = null;
+  }
+
+  /** The code face, fitted onto the round plate of the picture (it turns, tilts and nods with the acting). */
+  private paintPuppetFace(P: Puppet): void {
+    const f = this.geo!.face;
+    const fs = f.ry / 104;
+    const sq = Math.min(1, (f.rx / f.ry) * 1.12);
+    const bodyWarp = this.ink.warp;
+    const head = faceWarp(this.act, f.x, f.y, f.ry, bodyWarp);
+    const toFace = (x: number, y: number) => head(f.x + (x + 60) * fs * sq, f.y + (y + 210) * fs);
+    this.ink.warp = toFace;
+    this.paintFeatures(-60, -210, this.time, true);
+    // the moustache picture: rides on the face, flaps with the voice, flies up when shouting
+    const wig = Math.sin(this.time * 9) * 3 * this.mouth + (this.shouting ? -8 : 0) + (this.laughT > 0 ? Math.sin(this.time * 40) * 4 : 0);
+    const m = toFace(-62, -192 + wig);
+    const width = 200 * fs * (0.55 + 0.45 * sq);
+    const flap = 1 + this.mouth * 0.06 * Math.sin(this.time * 18) + (this.shouting ? 0.1 : 0);
+    P.mustache.setPosition(m.x, m.y);
+    P.mustache.setRotation(this.act.tilt * 1.2 + (this.charge > 0.3 ? -0.05 : 0));
+    P.mustache.setScale((width / P.mustache.width) * flap, (width / P.mustache.width) * (2 - flap));
+    this.ink.warp = bodyWarp;
+  }
+
+  /** The top hat sits on the smokestack on a spring: it hops on every downbeat, flies up on TOOT! */
+  private updateHat(P: Puppet, warp: (x: number, y: number) => { x: number; y: number }): void {
+    const g = this.geo!;
+    const H = this.hatS;
+    const whole = Math.floor(this.beat);
+    if (whole !== this.lastWhole) {
+      this.lastWhole = whole;
+      H.vy -= 60;
+      H.vr += (whole % 2 === 0 ? 1 : -1) * 0.5;
+    }
+    const lift = (this.pose.hatLift ?? 0) * this.poseW * 80 + (this.whistleT > 0 ? 40 : 0) + this.coughT * 50 + (this.laughT > 0 ? 12 : 0);
+    const dt = Math.min(this.dt, 1 / 30);
+    H.vy += ((-lift - H.y) * 260 - H.vy * 13) * dt;
+    H.y += H.vy * dt;
+    const tiltTarget = -this.lean * 0.35 + (this.pose.hatLift ? -0.25 * this.poseW : 0);
+    H.vr += ((tiltTarget - H.r) * 160 - H.vr * 9) * dt;
+    H.r += H.vr * dt;
+    const top = warp(g.chimney.x, g.chimney.top);
+    P.hat.setPosition(top.x, top.y + H.y).setRotation(H.r);
+  }
+
+  /** Put the glove picture at the end of the hose arm, pointing along it. */
+  private placeGlove(img: Phaser.GameObjects.Image, h: Hand, side: 'front' | 'back'): void {
+    const type = h.finger ? 'glovePoint' : h.fist ? 'gloveFist' : 'gloveOpen';
+    if (type !== this.gloveType[side]) {
+      this.gloveType[side] = type;
+      img.setTexture(`art:smokestack:${type}`);
+      this.glovePop[side] = 1;
+    }
+    this.glovePop[side] = Math.max(0, this.glovePop[side] - this.dt * 6);
+    const target = (type === 'glovePoint' ? 84 : type === 'gloveFist' ? 54 : 66) * (side === 'back' ? 0.9 : 1);
+    const pop = 1 + Math.sin(this.glovePop[side] * Math.PI) * 0.18;
+    const p = this.ink.warp ? this.ink.warp(h.x, h.y) : h;
+    img.setPosition(p.x, p.y).setRotation(h.angle + Math.PI / 2).setScale((target / img.height) * pop);
   }
 
   // ───────────────────────── drawing ─────────────────────────
@@ -337,20 +501,25 @@ export class Smokestack {
     const puff = Math.pow(1 - phase, 3) * 0.12 + this.coughT * 0.9 + this.whistleT * 0.15;
     const wiggle = this.mouth * (this.shouting ? 1.6 : 0.7) + this.laughT * 1.5;
     const lean = this.lean;
-    const hat = (this.pose.hatLift ?? 0) * this.poseW;
+    // the puppet's hat is a picture of its own: the stack only stretches when it puffs
+    const hat = this.usesPuppet ? 0 : (this.pose.hatLift ?? 0) * this.poseW;
+    const cx = this.chim.x;
+    const cb = this.chim.base;
+    const bb = this.boilerBox;
+    const bMid = (bb.yTop + bb.yBot) / 2;
     this.ink.warp = (x: number, y: number) => {
       let nx = x;
       let ny = y;
       // chimney: a top hat that pops up when puffing / coughing, and is tipped by hand
-      if (y < -296 && x > -250 && x < -90) {
-        const k = Math.min(1, (-296 - y) / 40);
-        ny = -296 + (y + 296) * (1 + puff * k) - hat * 46 * k;
-        nx = -170 + (x + 170) * (1 - puff * 0.35 * k) + hat * 10 * k;
+      if (y < cb && x > cx - 80 && x < cx + 80) {
+        const k = Math.min(1, (cb - y) / 40);
+        ny = cb + (y - cb) * (1 + puff * k) - hat * 46 * k;
+        nx = cx + (x - cx) * (1 - puff * 0.35 * k) + hat * 10 * k;
       }
       // the boiler breathes on the beat (bulges around its centre line)
-      if (y < -100 && y > -310 && x < -30) {
-        const along = Math.sin(Math.PI * Phaser.Math.Clamp((x + 620) / 590, 0, 1));
-        ny = -210 + (ny + 210) * (1 + breath * 0.05 * along);
+      if (y < bb.yBot && y > bb.yTop && x < bb.x1) {
+        const along = Math.sin(Math.PI * Phaser.Math.Clamp((x - bb.x0) / (bb.x1 - bb.x0), 0, 1));
+        ny = bMid + (ny - bMid) * (1 + breath * 0.05 * along);
       }
       // rubber ripple running along the body while singing / laughing
       const h = Phaser.Math.Clamp((-ny - 90) / 300, 0, 1);
@@ -502,7 +671,7 @@ export class Smokestack {
     this.ink.warp = bodyWarp;
   }
 
-  private paintFeatures(fx: number, fy: number, time: number): void {
+  private paintFeatures(fx: number, fy: number, time: number, puppet = false): void {
     const k = this.ink;
     const act = this.act;
     const pose = this.poseW > 0.5 ? this.pose : ({} as ActPose);
@@ -577,6 +746,9 @@ export class Smokestack {
     };
     let [w, oh, tTop, tBot] = shapes[v];
     if (this.shouting) [w, oh, tTop, tBot] = [32, 40, true, true];
+    // the shape melts from syllable to syllable (see update)
+    w = this.mw;
+    oh = oh === 0 && this.moh < 1.5 ? 0 : Math.max(this.moh, 0.01);
     let silentFace = this.mouth < 0.15 && !this.shouting && !laughing ? pose.mouth : undefined;
     if (!vil && (silentFace === 'smirk' || silentFace === 'cackle')) silentFace = 'grin';
     const fangs = (x1: number, x2: number, y: number, dir: 1 | -1, n: number): void => {
@@ -630,7 +802,7 @@ export class Smokestack {
 
     // walrus moustache: flaps with the voice, flies up when shouting
     const wig = Math.sin(time * 9) * 3 * this.mouth + (this.shouting ? -8 : 0);
-    for (const side of [-1, 1]) {
+    for (const side of puppet ? [] : [-1, 1]) {
       const sx = fx - 2;
       k.poly(
         [
@@ -680,12 +852,14 @@ export class Smokestack {
     k.circle(cx, cy, r * 0.25, 0x9a9a9a, 3);
   }
 
-  private paintArm(front: boolean): void {
+  private paintArm(front: boolean): Hand {
     const k = this.ink;
     const time = this.time;
     const beat = this.beat;
-    const shX = front ? -270 : -440;
-    const shY = front ? -190 : -210;
+    const geo = this.usesPuppet ? this.geo : null;
+    const sh = geo?.shoulders[front ? 0 : 1];
+    const shX = sh ? sh.x : front ? -270 : -440;
+    const shY = sh ? sh.y : front ? -190 : -210;
     let hx: number;
     let hy: number;
     let fist = false;
@@ -760,9 +934,24 @@ export class Smokestack {
         fingers = ap.fingers ?? 0;
       }
     }
+    if (geo) {
+      // the targets were designed around the code face: move them with the puppet's face,
+      // then let the hand travel there on a spring (fast, with a little overshoot)
+      hx += geo.face.x + 60;
+      hy += geo.face.y + 210;
+      const H = front ? this.hands.front : this.hands.back;
+      if (!H.init) Object.assign(H, { x: hx, y: hy, init: true });
+      const dt = Math.min(this.dt, 1 / 30);
+      H.vx += ((hx - H.x) * 340 - H.vx * 24) * dt;
+      H.vy += ((hy - H.y) * 340 - H.vy * 24) * dt;
+      H.x += H.vx * dt;
+      H.y += H.vy * dt;
+      hx = H.x;
+      hy = H.y;
+    }
     const cx = (shX + hx) / 2 - 40;
     const cy = (shY + hy) / 2 + 30;
-    if (front) {
+    if (front && !geo) {
       // smear: a fast swing leaves a streak from where the hand was one drawing ago
       const p = this.prevHand;
       if (p && Math.hypot(hx - p.x, hy - p.y) > 60) {
@@ -770,10 +959,12 @@ export class Smokestack {
       }
       this.prevHand = { x: hx, y: hy };
     }
-    k.hose(shX, shY, cx, cy, hx, hy, front ? 14 : 12, front ? INK : 0x262626);
-    k.glove(hx, hy, front ? 20 : 17, Math.atan2(hy - cy, hx - cx), fist);
+    k.hose(shX, shY, cx, cy, hx, hy, geo ? (front ? 17 : 15) : front ? 14 : 12, front ? INK : 0x262626);
+    const angle = Math.atan2(hy - cy, hx - cx);
+    const hand: Hand = { x: hx, y: hy, angle, fist, finger: finger || fingers > 0 || (front && this.arm === 'point') };
+    if (!geo) k.glove(hx, hy, front ? 20 : 17, angle, fist);
     // raised fingers: one to point, shush or wag; several to count
-    for (let f = 0; f < Math.max(finger ? 1 : 0, fingers); f++) {
+    for (let f = 0; !geo && f < Math.max(finger ? 1 : 0, fingers); f++) {
       const a = -Math.PI / 2 + (f - (Math.max(1, fingers) - 1) / 2) * 0.32;
       k.hose(hx, hy - 6, hx + Math.cos(a) * 14, hy - 6 + Math.sin(a) * 14, hx + Math.cos(a) * 28, hy - 6 + Math.sin(a) * 28, 7, PAPER, 2);
     }
@@ -788,10 +979,11 @@ export class Smokestack {
         for (let r = 0; r < 5; r++) k.line(hx + 6, hy - 56 + r * 14, hx + 56, hy - 56 + r * 14, 2, 0x5a5650);
       }
     }
+    return hand;
   }
 
   destroy(): void {
     this.gfx.destroy();
-    this.artImg?.destroy();
+    this.puppet?.box.destroy();
   }
 }

@@ -140,21 +140,23 @@ export interface GameConfig {
   bossArt?: boolean;
 }
 
-/** public/art/<boss>/manifest.json, written by `npm run art`. */
+/** public/art/<boss>/manifest.json, written by `npm run art` from a sheet of puppet parts. */
 export interface ArtManifest {
   boss: string;
-  w: number;
-  h: number;
-  facing: 'right' | 'left';
-  poses: string[];
-  variants: number;
+  type: 'parts';
+  parts: Record<string, { file: string; w: number; h: number }>;
+  /** In pixels of the body picture. */
   anchors: {
-    face: [number, number, number];
-    eyes: [number, number];
-    mouth: [number, number];
-    chimney: [number, number];
-    lamp: [number, number];
+    /** Centre and radii of the round front plate where the face goes: [x, y, rx, ry]. */
+    face: [number, number, number, number];
+    wheels: [number, number, number][];
+    frontWheel?: [number, number, number];
+    /** [x, top y, base y] of the bare smokestack (the hat sits on top). */
+    chimney: [number, number, number];
+    /** Front and back shoulder. */
+    shoulders: [number, number][];
     ground: number;
+    noseX: number;
   };
 }
 

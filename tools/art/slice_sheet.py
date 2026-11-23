@@ -18,6 +18,17 @@ Writes public/art/<boss>/:
     manifest.json                              canvas size, pose list and anchor points
                                                (face, mouth, eyes, chimney, lamp, ground)
 
+A sheet of separate PARTS for a puppet ("type": "parts") works too:
+    {
+      "type": "parts",
+      "sheet": "parts.jpg",
+      "scale": 2,                                   enlarge every part (smoother when shown big)
+      "parts": { "body": [380, 260], "hat": [772, 130], ... },   a point inside each part
+      "anchors": { "face": [576, 243, 41, 64], "wheels": [[182, 358, 58], ...], ... }
+    }
+  Writes public/art/<boss>/<part>.png and a manifest with every part's size and the
+  anchors moved into the body picture's own pixels.
+
 Only needs Pillow and numpy.
 """
 
@@ -251,6 +262,78 @@ def find_face(rgba: np.ndarray, lum: np.ndarray, facing: str) -> tuple[int, int,
     return best
 
 
+def slice_parts(boss: str, spec: dict, src_dir: Path) -> None:
+    """Cut every part of a puppet sheet out on its own, plus the body's anchor points."""
+    sheet = Image.open(src_dir / spec["sheet"]).convert("RGB")
+    rgb = np.array(sheet)
+    lum = rgb.astype(np.float64) @ [0.299, 0.587, 0.114]
+    scale = float(spec.get("scale", 1))
+    hints: dict = spec["parts"]
+    print(f"· {spec['sheet']}: {sheet.width} x {sheet.height}, {len(hints)} parts, x{scale:g}")
+    small = lum[::2, ::2] < INK_LEVEL
+    lab, n = label(dilate(small, 3))
+    sizes = np.bincount(lab.ravel())
+    sizes[0] = 0
+    owner_of: dict[str, int] = {}
+    for name, (hx, hy) in hints.items():
+        y, x = int(hy) // 2, int(hx) // 2
+        comp = int(lab[y, x])
+        if comp == 0:  # the hint fell on white: take the nearest drawing
+            ys, xs = np.nonzero(lab)
+            i = int(np.argmin((ys - y) ** 2 + (xs - x) ** 2))
+            comp = int(lab[ys[i], xs[i]])
+        owner_of[name] = comp
+    # loose bits go with the nearest part
+    taken = set(owner_of.values())
+    centres = {name: np.argwhere(lab == c).mean(axis=0) for name, c in owner_of.items()}
+    full_owner = {name: (lab == c) for name, c in owner_of.items()}
+    for c in range(1, n + 1):
+        if c in taken or sizes[c] == 0:
+            continue
+        cy, cx = np.argwhere(lab == c).mean(axis=0)
+        best = min(centres, key=lambda k: (centres[k][0] - cy) ** 2 + (centres[k][1] - cx) ** 2)
+        full_owner[best] |= lab == c
+    out_dir = ROOT / "public" / "art" / boss
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.glob("*.png"):
+        old.unlink()
+    parts = {}
+    body_origin = (0, 0)
+    for name, m in full_owner.items():
+        own = dilate(np.kron(m, np.ones((2, 2), dtype=bool))[: lum.shape[0], : lum.shape[1]], 2)
+        ys, xs = np.nonzero(own)
+        pad = 6
+        x0, y0 = max(0, int(xs.min()) - pad), max(0, int(ys.min()) - pad)
+        x1, y1 = min(rgb.shape[1], int(xs.max()) + pad), min(rgb.shape[0], int(ys.max()) + pad)
+        cut = cut_out(rgb[y0:y1, x0:x1], lum[y0:y1, x0:x1], own[y0:y1, x0:x1])
+        img = Image.fromarray(cut, "RGBA")
+        if scale != 1:
+            img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+        img.save(out_dir / f"{name}.png", optimize=True)
+        parts[name] = {"file": f"{name}.png", "w": img.width, "h": img.height}
+        if name == "body":
+            body_origin = (x0, y0)
+        print(f"  {name:12s} {img.width:5d} x {img.height:<5d}")
+
+    def to_body(v):  # sheet px -> body picture px
+        if isinstance(v, (int, float)):
+            return v * scale
+        if isinstance(v, list) and v and isinstance(v[0], list):
+            return [to_body(e) for e in v]
+        out = [(v[0] - body_origin[0]) * scale, (v[1] - body_origin[1]) * scale]
+        return out + [e * scale for e in v[2:]]
+
+    anchors = {}
+    for k, v in spec.get("anchors", {}).items():
+        if k in ("ground", "noseX"):
+            anchors[k] = (v - (body_origin[1] if k == "ground" else body_origin[0])) * scale
+        else:
+            anchors[k] = to_body(v)
+    manifest = {"boss": boss, "type": "parts", "parts": parts, "anchors": anchors, "source": f"art/{boss}/{spec['sheet']}"}
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"✓ wrote {len(parts)} parts + manifest.json to public/art/{boss}/")
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         fail("usage: npm run art -- <boss>   (reads art/<boss>/art.json)")
@@ -260,6 +343,9 @@ def main() -> None:
     if not spec_path.exists():
         fail(f"art/{boss}/art.json not found")
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    if spec.get("type") == "parts":
+        slice_parts(boss, spec, src_dir)
+        return
     names: list[str] = spec["poses"]
     order = spec.get("order", "rows")
     facing = spec.get("facing", "right")

@@ -87,10 +87,8 @@ export class BootScene extends Phaser.Scene {
         const res = await fetch(`art/${boss}/manifest.json?v=${Date.now()}`);
         if (!res.ok) continue;
         const m = (await res.json()) as ArtManifest;
-        if (!Array.isArray(m.poses) || !m.anchors?.face) continue;
-        for (const pose of m.poses) {
-          for (let v = 0; v < (m.variants || 1); v++) this.load.image(`art:${boss}:${pose}:${v}`, `art/${boss}/${pose}_${v}.png`);
-        }
+        if (m.type !== 'parts' || !m.parts?.body || !m.anchors?.face) continue;
+        for (const [name, part] of Object.entries(m.parts)) this.load.image(`art:${boss}:${name}`, `art/${boss}/${part.file}`);
         Game.art[boss] = m;
       } catch {
         // no art for this boss (or not JSON): keep the code drawing

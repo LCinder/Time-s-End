@@ -1,44 +1,89 @@
 {
   "boss": "smokestack",
-  "w": 450,
-  "h": 263,
-  "facing": "right",
-  "poses": [
-    "sneer",
-    "sing",
-    "cackle",
-    "point",
-    "charge",
-    "stare",
-    "fakeSob",
-    "shocked",
-    "panic",
-    "bow"
-  ],
-  "variants": 3,
+  "type": "parts",
+  "parts": {
+    "body": {
+      "file": "body.png",
+      "w": 1190,
+      "h": 698
+    },
+    "hat": {
+      "file": "hat.png",
+      "w": 390,
+      "h": 334
+    },
+    "mustache": {
+      "file": "mustache.png",
+      "w": 586,
+      "h": 270
+    },
+    "gloveOpen": {
+      "file": "gloveOpen.png",
+      "w": 426,
+      "h": 422
+    },
+    "gloveFist": {
+      "file": "gloveFist.png",
+      "w": 318,
+      "h": 346
+    },
+    "glovePoint": {
+      "file": "glovePoint.png",
+      "w": 298,
+      "h": 454
+    },
+    "wheel": {
+      "file": "wheel.png",
+      "w": 462,
+      "h": 482
+    }
+  },
   "anchors": {
     "face": [
-      358,
-      138,
-      45
+      976.0,
+      306.0,
+      82.0,
+      128.0
     ],
-    "eyes": [
-      358,
-      131
+    "wheels": [
+      [
+        188.0,
+        536.0,
+        118.0
+      ],
+      [
+        444.0,
+        540.0,
+        118.0
+      ],
+      [
+        692.0,
+        540.0,
+        118.0
+      ]
     ],
-    "mouth": [
-      358,
-      158
+    "frontWheel": [
+      878.0,
+      594.0,
+      56.0
     ],
     "chimney": [
-      337,
-      15
+      878.0,
+      28.0,
+      374.0
     ],
-    "lamp": [
-      360,
-      75
+    "shoulders": [
+      [
+        824.0,
+        390.0
+      ],
+      [
+        484.0,
+        300.0
+      ]
     ],
-    "ground": 247
+    "ground": 666.0,
+    "noseX": 1162.0
   },
-  "source": "art/smokestack/sheet.jpg"
+  "source": "art/smokestack/parts.jpg"
 }
