@@ -135,3 +135,35 @@ export function fillerAct(last: ActName | null, rnd: () => number = Math.random)
   const pool = FILLER_ACTS.filter((a) => a !== last);
   return pool[Math.floor(rnd() * pool.length)];
 }
+
+// ── the puppet (MAIN.md §8.3): the face and the gaze of each act (expressions are in FaceRig.ts) ──
+
+export type Gaze = 'tick' | 'camera' | 'up' | 'back' | 'down' | 'side';
+
+/** The puppet's face and where it looks for each act of the repertoire. */
+export const ACT_FACE: Record<ActName, { face: string; gaze?: Gaze }> = {
+  tipHat: { face: 'smug', gaze: 'camera' },
+  timetable: { face: 'scheme', gaze: 'down' },
+  twirl: { face: 'smirk', gaze: 'camera' },
+  shush: { face: 'smirk', gaze: 'camera' },
+  cupEar: { face: 'listen', gaze: 'side' },
+  patBoiler: { face: 'smug', gaze: 'camera' },
+  shimmy: { face: 'grin', gaze: 'camera' },
+  beckon: { face: 'smirk', gaze: 'tick' },
+  yawn: { face: 'yawn' },
+  doubleTake: { face: 'shock', gaze: 'tick' },
+  steamEars: { face: 'rage', gaze: 'tick' },
+  wink: { face: 'wink', gaze: 'camera' },
+  sneeze: { face: 'shock' },
+  lookBack: { face: 'suspicious', gaze: 'back' },
+  bow: { face: 'smug', gaze: 'camera' },
+  fakeSob: { face: 'mockSad', gaze: 'camera' },
+  shrug: { face: 'innocent', gaze: 'camera' },
+  count: { face: 'scheme', gaze: 'tick' },
+  rubHands: { face: 'grin', gaze: 'camera' },
+  wagFinger: { face: 'smirk', gaze: 'camera' },
+  panic: { face: 'panic' },
+  stare: { face: 'menace', gaze: 'camera' },
+  cackle: { face: 'cackle' },
+};
+export const SING_FACES = ['smirk', 'grin', 'sneer', 'scheme', 'glee'];

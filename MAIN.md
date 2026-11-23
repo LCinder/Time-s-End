@@ -481,10 +481,15 @@ Sin animador, la forma más fluida de usar dibujos de verdad es una **marioneta*
 - **Cómo se anima (todo continuo, nada salta):**
   - **el cuerpo** es una malla (`Phaser.GameObjects.Mesh`) cuyos vértices pasan cada fotograma por la misma deformación de goma que el dibujo por código: respira, se estira en los acentos, se inclina al embestir y ondula al cantar;
   - **las ruedas** giran y la biela sigue a las manivelas;
-  - **la cara** se dibuja por código encima del frente redondo: gira en falso 3D, parpadea, los ojos siguen a Tick y la boca pasa de una sílaba a otra fundiéndose (la forma se interpola, no se cambia de imagen);
+  - **la cara** es un rig por código (`src/entities/FaceRig.ts`) dibujado encima del frente redondo. Tiene controles continuos: cada ceja (altura y enfado), párpados de arriba y de abajo que tapan el ojo, tamaño del ojo y de la pupila, mirada, y boca (apertura, anchura, sonrisa, mueca torcida, dientes, colmillos, lengua, mofletes).
+    - Hay 18 expresiones: mueca, sonrisa ladeada, sonrisa malvada, carcajada, furia, susto, tramar, mirada amenazante, lágrimas falsas, chulería, guiño, inocencia, preocupación, pánico, bostezo, regodeo, escuchar y sospecha.
+    - Cada actuación tiene su expresión y su mirada (`ACT_FACE`). La cara pasa de una a otra deslizándose; las sílabas abren y dan forma a la boca encima de la expresión.
+    - Gira en falso 3D, parpadea y los ojos dan pequeños saltos para no quedarse quietos;
+  - **mira al jugador:** en los versos que le canta a Tick ("kid", "little ticker", "you"…) el director le hace mirar a cámara y se inclina hacia ella; el guiño, el saludo y la mirada amenazante también van a cámara;
   - **el bigote** (imagen) va pegado a la cara y aletea al cantar;
   - **el sombrero** (imagen) va sobre un muelle: bota en cada beat, salta con el silbato y lo levanta la mano al saludar;
-  - **los brazos** son mangueras por código con los guantes dibujados al final; la mano viaja a cada gesto sobre un muelle con un poco de rebote.
+  - **los brazos** son mangueras por código con los guantes dibujados al final; la mano viaja a cada gesto sobre un muelle con un poco de rebote. El hombro está junto a la cara, el brazo tiene un alcance máximo, no se sale de pantalla, el codo se dobla hacia fuera y, si el brazo cruzara la cara, pasa por detrás de la cabeza.
+- **Revisión por fotogramas:** antes de cada avance grande se genera una hoja de fotogramas (expresiones y gestos) para revisarla.
 - Las 23 actuaciones, el director y la sincronía labial son los mismos que en el dibujo por código. El Smokestack amable del Bijou sigue dibujado por código.
 - Se probó antes una hoja de 10 poses cambiando de imagen: se veía falso, porque faltan los dibujos intermedios. La marioneta lo sustituye.
 - **Siguiente paso:** el dibujo definitivo de un dibujante (las mismas piezas, en alta resolución) y, si hace falta, piezas extra de la cara.

@@ -11,7 +11,8 @@ import { Game } from '../core/Game';
 import type { ArtManifest } from '../core/types';
 import type { Viseme } from '../core/visemes';
 import { Acting, faceWarp } from '../rig/Acting';
-import { ACTS, type ActName, type ActPose } from './SmokestackActs';
+import { ACTS, ACT_FACE, SING_FACES, type ActName, type ActPose, type Gaze } from './SmokestackActs';
+import { NEUTRAL, drawFace, expression, glideFace, type FaceParams } from './FaceRig';
 import { INK, Ink, PAPER } from '../rig/Ink';
 
 export type ArmPose = 'idle' | 'point' | 'fist' | 'wave';
@@ -27,6 +28,7 @@ const MOUTH_SHAPES: Record<Viseme, [number, number, boolean, boolean]> = {
   round: [26, 26, false, false],
   small: [17, 13, false, false],
 };
+
 
 // ── puppet mode: a body picture + parts from `npm run art -- smokestack` ──
 /** Half-height of the face plate on screen (local px): sets the puppet's size. */
@@ -45,6 +47,8 @@ interface PuppetGeo {
 interface Puppet {
   box: Phaser.GameObjects.Container;
   gBack: Phaser.GameObjects.Graphics;
+  /** the front arm when it reaches behind the head */
+  gUnder: Phaser.GameObjects.Graphics;
   gMid: Phaser.GameObjects.Graphics;
   gFront: Phaser.GameObjects.Graphics;
   rest: { v: Phaser.Geom.Mesh.Vertex; x: number; y: number }[];
@@ -76,7 +80,11 @@ function puppetGeometry(a: ArtManifest): PuppetGeo {
     k,
     face: { x: f.x, y: f.y, rx: A.face[2] * k, ry: A.face[3] * k },
     chimney: { x: top.x, top: top.y, base: L(0, A.chimney[2]).y, capW: 130 * k },
-    shoulders: A.shoulders.map(([x, y]) => L(x, y)),
+    // the near arm comes out just behind the face, low; the far one from behind the boiler
+    shoulders: [
+      { x: f.x - A.face[2] * k * 1.45, y: f.y + A.face[3] * k * 0.5 },
+      ...A.shoulders.slice(1).map(([x, y]) => L(x, y)),
+    ],
     wheels: fw ? [...big, { ...L(fw[0], fw[1]), r: fw[2] * k, spin: A.wheels[0][2] / fw[2] }] : big,
   };
 }
@@ -168,6 +176,12 @@ export class Smokestack {
   private gloveType = { front: '', back: '' };
   private glovePop = { front: 0, back: 0 };
   private lastWhole = -1;
+  /** where the puppet looks: at Tick, into the camera (the player!), up at the sky... */
+  gaze: Gaze = 'tick';
+  private faceNow: FaceParams = { ...NEUTRAL };
+  private singFace = 'smirk';
+  private wasSinging = false;
+  private saccade = { x: 0, y: 0, t: 0, next: 1.5 };
   /** where the warp finds the smokestack and the boiler (the code drawing by default) */
   private chim = { x: -170, base: -296 };
   private boilerBox = { x0: -620, x1: -30, yTop: -310, yBot: -100 };
@@ -290,6 +304,7 @@ export class Smokestack {
     const toTick = Phaser.Math.Clamp((this.lookTarget.x - faceX) / 380, -1, 1) * 0.85;
     let look = singing ? toTick * 0.25 : toTick;
     if (this.pose.turn !== undefined) look += (this.pose.turn - look) * this.poseW;
+    if (this.usesPuppet && this.currentGaze() === 'camera') look *= 0.1;
     this.act.update(dt, beat, { look, singing, accent: this.accentNow, nervous: this.nervous, idle: false });
     this.accentNow = false;
     this.accentT = Math.max(0, this.accentT - dt);
@@ -337,6 +352,7 @@ export class Smokestack {
     this.moh += (toh - this.moh) * m;
 
     if (this.usesPuppet) {
+      glideFace(this.faceNow, this.faceTarget(dt), dt);
       this.updatePuppet();
       return;
     }
@@ -377,18 +393,19 @@ export class Smokestack {
     });
     const wheelR = a.parts.wheel.w / 2 - 12;
     const wheels = g.wheels.map((w) => s.add.image(0, 0, 'art:smokestack:wheel').setScale((w.r * 1.05) / wheelR));
+    const gUnder = s.add.graphics();
     const gMid = s.add.graphics();
-    const mustache = s.add.image(0, 0, 'art:smokestack:mustache').setOrigin(0.5, 0.3);
+    const mustache = s.add.image(0, 0, 'art:smokestack:mustache').setOrigin(0.5, 0.22);
     const hat = s.add.image(0, 0, 'art:smokestack:hat').setOrigin(0.5, 0.9);
     hat.setScale((g.chimney.capW * 1.7) / a.parts.hat.w);
     const gFront = s.add.graphics();
     const gloveF = s.add.image(0, 0, 'art:smokestack:gloveOpen').setOrigin(0.5, 0.82);
-    box.add([gBack, gloveB, mesh, ...wheels, gMid, mustache, hat, gFront, gloveF]);
+    box.add([gBack, gloveB, mesh, ...wheels, gUnder, gMid, mustache, hat, gFront, gloveF]);
     // the warp finds the smokestack and the boiler of this picture
     this.chim = { x: g.chimney.x, base: g.chimney.base };
     const f = g.face;
     this.boilerBox = { x0: f.x - f.ry * 6, x1: f.x - f.rx * 0.6, yTop: f.y - f.ry * 1.1, yBot: f.y + f.ry * 1.1 };
-    return { box, gBack, gMid, gFront, rest, wheels, mustache, hat, gloveF, gloveB };
+    return { box, gBack, gUnder, gMid, gFront, rest, wheels, mustache, hat, gloveF, gloveB };
   }
 
   /** The puppet, redrawn every frame (60 fps) so every movement is continuous. */
@@ -398,7 +415,8 @@ export class Smokestack {
     const g = this.geo!;
     this.gfx.setVisible(false);
     P.box.setVisible(this.visible);
-    P.box.setPosition(this.gfx.x, this.gfx.y).setRotation(this.gfx.rotation).setScale(this.gfx.scaleX, this.gfx.scaleY);
+    const near = 1 + this.faceNow.lean * 0.05;
+    P.box.setPosition(this.gfx.x, this.gfx.y).setRotation(this.gfx.rotation).setScale(this.gfx.scaleX * near, this.gfx.scaleY * near);
     this.ink.seed = 0;
     this.ink.amp = 0.5;
     this.setupWarp();
@@ -417,6 +435,7 @@ export class Smokestack {
     const k = this.ink;
     const prevG = k.g;
     P.gBack.clear();
+    P.gUnder.clear();
     P.gMid.clear();
     P.gFront.clear();
     k.g = P.gBack;
@@ -440,25 +459,129 @@ export class Smokestack {
     this.ink.warp = null;
   }
 
-  /** The code face, fitted onto the round plate of the picture (it turns, tilts and nods with the acting). */
+  /** Where to look right now (an act can override the director's choice). */
+  private currentGaze(): Gaze {
+    if (this.arm === 'point') return 'up';
+    if (this.perf && this.poseW > 0.3) return ACT_FACE[this.perf.name].gaze ?? this.gaze;
+    return this.gaze;
+  }
+
+  /** The face the puppet should be making now: an expression, the syllable being sung, the gaze, blinks. */
+  private faceTarget(dt: number): FaceParams {
+    const laughing = this.laughT > 0.05;
+    const singing = this.mouth > 0.12 || this.shouting;
+    if (singing && !this.wasSinging) this.singFace = SING_FACES[Math.floor(Math.random() * SING_FACES.length)];
+    this.wasSinging = singing;
+    let name = 'sneer';
+    if (this.fallY > 20) name = this.arm === 'wave' ? 'innocent' : 'panic';
+    else if (laughing) name = 'cackle';
+    else if (this.arm === 'point') name = 'glee';
+    else if (this.arm === 'fist' || this.charge > 0.3) name = 'rage';
+    else if (this.perf && this.poseW > 0.3) name = ACT_FACE[this.perf.name].face;
+    else if (this.nervous > 0.5) name = 'worry';
+    else if (singing) name = this.singFace;
+    const t = expression(name);
+    // the syllable being sung opens and shapes the mouth on top of the expression
+    if (singing && !laughing) {
+      t.open = Math.max(t.open * 0.5, this.moh / 42);
+      t.width = t.width * 0.4 + (this.mw / 34) * 0.6;
+      if (this.shouting) {
+        t.eye *= 1.12;
+        t.browL += 0.4;
+        t.browR += 0.4;
+      }
+    }
+    // gaze
+    const gaze = this.currentGaze();
+    const f = this.geo!.face;
+    const faceX = this.screenX + f.x * this.size;
+    const faceY = this.groundY + f.y * this.size;
+    const dirs: Record<Gaze, [number, number]> = {
+      tick: [Phaser.Math.Clamp((this.lookTarget.x - faceX) / 260, -1, 1), Phaser.Math.Clamp((this.lookTarget.y - faceY) / 260, -1, 1)],
+      camera: [0.05, 0.08],
+      up: [0.35, -0.95],
+      back: [-1, -0.1],
+      down: [0.15, 0.85],
+      side: [0.95, -0.05],
+    };
+    const own = name in { scheme: 1, listen: 1, suspicious: 1 } ? [t.gazeX, t.gazeY] : null;
+    let [gx, gy] = own && gaze === 'tick' ? own : dirs[gaze];
+    // the eyes are never dead still: quick little darts (except when staring you down)
+    const S = this.saccade;
+    S.next -= dt;
+    S.t = Math.max(0, S.t - dt);
+    if (S.next <= 0) {
+      S.x = (Math.random() - 0.5) * 0.5;
+      S.y = (Math.random() - 0.5) * 0.3;
+      S.t = 0.25 + Math.random() * 0.3;
+      S.next = 0.9 + Math.random() * 1.6;
+    }
+    if (S.t > 0 && name !== 'menace' && gaze !== 'camera') {
+      gx += S.x;
+      gy += S.y;
+    }
+    t.gazeX = gx;
+    t.gazeY = gy;
+    // singing at the player: lean in a little
+    if (gaze === 'camera' && singing) t.lean = Math.max(t.lean, 0.45);
+    // accents: eyes pop for the big moment
+    if (this.accentT > 0) {
+      t.eye *= 1.15;
+      t.browL += 0.5;
+      t.browR += 0.5;
+    }
+    // blinks (and always on a head turn, see Acting)
+    if (this.act.blinking && name !== 'cackle' && name !== 'menace') {
+      t.lidL = 1;
+      t.lidR = 1;
+    }
+    return t;
+  }
+
+  /** The rig face, fitted onto the round plate of the picture (it turns, tilts and nods with the acting). */
   private paintPuppetFace(P: Puppet): void {
     const f = this.geo!.face;
-    const fs = f.ry / 104;
-    const sq = Math.min(1, (f.rx / f.ry) * 1.12);
+    const p = this.faceNow;
+    const fs = (f.ry / 104) * (1 + p.lean * 0.14);
+    const sq = Math.min(1, (f.rx / f.ry) * 1.12 + p.lean * 0.08);
     const bodyWarp = this.ink.warp;
     const head = faceWarp(this.act, f.x, f.y, f.ry, bodyWarp);
-    const toFace = (x: number, y: number) => head(f.x + (x + 60) * fs * sq, f.y + (y + 210) * fs);
-    this.ink.warp = toFace;
-    this.paintFeatures(-60, -210, this.time, true);
-    // the moustache picture: rides on the face, flaps with the voice, flies up when shouting
-    const wig = Math.sin(this.time * 9) * 3 * this.mouth + (this.shouting ? -8 : 0) + (this.laughT > 0 ? Math.sin(this.time * 40) * 4 : 0);
-    const m = toFace(-62, -192 + wig);
-    const width = 200 * fs * (0.55 + 0.45 * sq);
-    const flap = 1 + this.mouth * 0.06 * Math.sin(this.time * 18) + (this.shouting ? 0.1 : 0);
+    const toFace = (x: number, y: number) => head(f.x + x * fs * sq, f.y + y * fs);
+    const k = this.ink;
+    k.warp = toFace;
+    const red = this.charge > 0.3 || (this.poseW > 0.5 && !!this.pose.red);
+    k.circle(0, -4, 10, 0x4a4a4a, 4); // nose rivet
+    drawFace(k, 0, 0, p, { plate: 0xbababb, white: red ? 0xe8b0a0 : 0xeae6da, glow: this.dark > 0.4, eyeY: -38, mouthY: 60 });
+    // props that live on the face
+    const pose = this.poseW > 0.5 ? this.pose : ({} as ActPose);
+    const time = this.time;
+    if (pose.tears) {
+      for (const [ex, ph] of [[-34, 0], [34, 0.5]] as const) {
+        const d = ((time * 1.6 + ph) % 1) * 70;
+        k.poly([{ x: ex, y: -10 + d }, { x: ex + 7, y: 4 + d }, { x: ex - 7, y: 4 + d }], 0xd8ecff, 2);
+      }
+    }
+    if (pose.earSteam || this.charge > 0.6) {
+      for (const side of [-1, 1]) {
+        const puff = (time * 3) % 1;
+        k.cloud(side * (112 + puff * 40), -40 - puff * 50, 14 + puff * 14);
+      }
+    }
+    if (this.nervous > 0.4) {
+      const drip = (time * 1.5) % 1;
+      k.poly([{ x: 84, y: -64 + drip * 30 }, { x: 94, y: -38 + drip * 30 }, { x: 74, y: -38 + drip * 30 }], 0xe0f0ff, 3);
+    }
+    if (pose.soot) k.cloud(60, 70, 46, 0x2a2a2a);
+    // the moustache picture rides on the face: lifts with a smile, tilts with a sneer, flaps when singing
+    const wig = Math.sin(time * 9) * 3 * this.mouth + (this.laughT > 0 ? Math.sin(time * 40) * 4 : 0);
+    // (it hangs from just under the nose, the mouth shows below it)
+    const m = toFace(-2, 4 - p.smile * 5 - p.open * 6 + wig);
+    const width = 122 * fs * (0.55 + 0.45 * sq) * (1 + p.smile * 0.06);
+    const flap = 1 + this.mouth * 0.06 * Math.sin(time * 18) + (this.shouting ? 0.1 : 0);
     P.mustache.setPosition(m.x, m.y);
-    P.mustache.setRotation(this.act.tilt * 1.2 + (this.charge > 0.3 ? -0.05 : 0));
+    P.mustache.setRotation(this.act.tilt * 1.2 - p.skew * 0.09);
     P.mustache.setScale((width / P.mustache.width) * flap, (width / P.mustache.width) * (2 - flap));
-    this.ink.warp = bodyWarp;
+    k.warp = bodyWarp;
   }
 
   /** The top hat sits on the smokestack on a spring: it hops on every downbeat, flies up on TOOT! */
@@ -907,8 +1030,14 @@ export class Smokestack {
           // conducts the band: a little flourish on every beat while singing
           const ph = beat - Math.floor(beat);
           const sing = this.mouth > 0.2 ? 1 : 0.4;
-          hx = -230 + Math.sin(beat * Math.PI) * 30 * sing;
-          hy = -360 - Math.pow(1 - ph, 2) * 30 * sing;
+          if (this.usesPuppet) {
+            // the puppet rests its hand low on the boiler and only lifts it to sing
+            hx = -190 + Math.sin(beat * Math.PI) * 26 * sing;
+            hy = -150 - sing * 90 - Math.pow(1 - ph, 2) * 24 * sing;
+          } else {
+            hx = -230 + Math.sin(beat * Math.PI) * 30 * sing;
+            hy = -360 - Math.pow(1 - ph, 2) * 30 * sing;
+          }
         }
       }
     } else {
@@ -955,10 +1084,21 @@ export class Smokestack {
       }
     }
     if (geo) {
-      // the targets were designed around the code face: move them with the puppet's face,
+      // the targets were designed around the code face (centre -60,-210, radius 104):
+      // move and scale them to the puppet's face, keep them within reach and on screen,
       // then let the hand travel there on a spring (fast, with a little overshoot)
-      hx += geo.face.x + 60;
-      hy += geo.face.y + 210;
+      const f = geo.face;
+      const s = f.ry / 104;
+      hx = f.x + (hx + 60) * s;
+      hy = f.y + (hy + 210) * s;
+      const reach = f.ry * 3.3;
+      const d = Math.hypot(hx - shX, hy - shY);
+      if (d > reach) {
+        hx = shX + ((hx - shX) * reach) / d;
+        hy = shY + ((hy - shY) * reach) / d;
+      }
+      hy = Math.max(hy, -(this.groundY - 75) / this.size);
+      hx = Math.min(hx, (1240 - this.screenX) / this.size);
       const H = front ? this.hands.front : this.hands.back;
       if (!H.init) Object.assign(H, { x: hx, y: hy, init: true });
       const dt = Math.min(this.dt, 1 / 30);
@@ -969,8 +1109,36 @@ export class Smokestack {
       hx = H.x;
       hy = H.y;
     }
-    const cx = (shX + hx) / 2 - 40;
-    const cy = (shY + hy) / 2 + 30;
+    let cx = (shX + hx) / 2 - 40;
+    let cy = (shY + hy) / 2 + 30;
+    let underHead = false;
+    if (geo) {
+      // the elbow bends away from the face; an arm that would cross the face goes behind the head
+      const f = geo.face;
+      const mx = (shX + hx) / 2;
+      const my = (shY + hy) / 2;
+      let nx = -(hy - shY);
+      let ny = hx - shX;
+      const nl = Math.hypot(nx, ny) || 1;
+      nx /= nl;
+      ny /= nl;
+      if ((mx + nx - f.x) ** 2 + (my + ny - f.y) ** 2 < (mx - nx - f.x) ** 2 + (my - ny - f.y) ** 2) {
+        nx = -nx;
+        ny = -ny;
+      }
+      const bend = 22 + Math.min(40, Math.hypot(hx - shX, hy - shY) * 0.12);
+      cx = mx + nx * bend;
+      cy = my + ny * bend;
+      // does the hose pass over the face plate?
+      for (let i = 1; i < 8 && front; i++) {
+        const t = i / 8;
+        const qx = (1 - t) * (1 - t) * shX + 2 * (1 - t) * t * cx + t * t * hx;
+        const qy = (1 - t) * (1 - t) * shY + 2 * (1 - t) * t * cy + t * t * hy;
+        if (((qx - f.x) / (f.rx * 1.05)) ** 2 + ((qy - f.y) / (f.ry * 1.05)) ** 2 < 1) underHead = true;
+      }
+    }
+    const armG = k.g;
+    if (underHead && this.puppet) k.g = this.puppet.gUnder;
     if (front && !geo) {
       // smear: a fast swing leaves a streak from where the hand was one drawing ago
       const p = this.prevHand;
@@ -981,6 +1149,7 @@ export class Smokestack {
     }
     k.hose(shX, shY, cx, cy, hx, hy, geo ? (front ? 17 : 15) : front ? 14 : 12, front ? INK : 0x262626);
     const angle = Math.atan2(hy - cy, hx - cx);
+    k.g = armG;
     const hand: Hand = { x: hx, y: hy, angle, fist, finger: finger || fingers > 0 || (front && this.arm === 'point') };
     if (!geo) k.glove(hx, hy, front ? 20 : 17, angle, fist);
     // raised fingers: one to point, shush or wag; several to count

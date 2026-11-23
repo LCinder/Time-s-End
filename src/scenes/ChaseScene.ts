@@ -500,9 +500,13 @@ export class ChaseScene extends Phaser.Scene {
     const idx = this.lines.findIndex((l) => beat >= l.beat - 0.2 && beat <= l.end);
     if (idx >= 0 && idx !== this.lastLine) {
       this.lastLine = idx;
-      const act = actForLine(this.lines[idx].words.map((w) => w.text).join(' '), this.lastAct);
+      const text = this.lines[idx].words.map((w) => w.text).join(' ');
+      const act = actForLine(text, this.lastAct);
       if (act) play(act);
+      // lines sung AT Tick ("kid", "little ticker", "you"...) are sung to the player: he looks into the camera
+      b.gaze = /\b(you|your|kid|ticker|little clock|tick-tock)\b/i.test(text) ? 'camera' : 'tick';
     }
+    if (idx < 0 && this.lastLine >= 0 && b.gaze === 'camera' && !b.performing) b.gaze = 'tick';
     // nobody singing and nothing going on: improvise a little
     if (idx < 0 && !b.performing && b.arm === 'idle' && beat >= this.nextFiller) {
       const f = fillerAct(this.lastAct);
