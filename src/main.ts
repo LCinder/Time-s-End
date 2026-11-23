@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { FilmPipeline } from './fx/FilmPipeline';
+import { patchMeshRenderer } from './fx/meshFix';
 import { BootScene } from './scenes/BootScene';
 import { CalibrateScene } from './scenes/CalibrateScene';
 import { ChaseScene } from './scenes/ChaseScene';
@@ -12,6 +13,8 @@ import { OptionsScene, ProgrammeScene, ResumeScene, SlotScene } from './scenes/M
 import { SplashScene } from './scenes/SplashScene';
 import { TitleCardScene } from './scenes/TitleCardScene';
 import { TitleScene } from './scenes/TitleScene';
+
+patchMeshRenderer();
 
 const game = new Phaser.Game({
   type: Phaser.WEBGL,

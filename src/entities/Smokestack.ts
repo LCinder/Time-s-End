@@ -156,6 +156,12 @@ export class Smokestack {
   /** the mouth shape melts from one syllable into the next */
   private mw = 34;
   private moh = 0;
+  /** brows, eye size and lids glide between expressions too */
+  private featT = 0;
+  private moodS = 0.7;
+  private raiseS = 0;
+  private bigS = 1;
+  private lidS = 0.55;
   /** hands, hat and gloves move on springs: nothing ever jumps */
   private hands = { front: { x: 0, y: 0, vx: 0, vy: 0, init: false }, back: { x: 0, y: 0, vx: 0, vy: 0, init: false } };
   private hatS = { y: 0, vy: 0, r: 0, vr: 0 };
@@ -686,6 +692,14 @@ export class Smokestack {
     // friendly (in the Bijou) the same performances read warm: squints become smiles
     const eyesMode = !vil && pose.eyes === 'squint' ? 'closed' : pose.eyes;
     const glow = vil && this.dark > 0.4;
+    // expressions glide instead of snapping (time-based, so it works on twos and at 60 fps)
+    const fdt = Phaser.Math.Clamp(time - this.featT, 0, 0.1);
+    this.featT = time;
+    const glide = (cur: number, target: number, rate: number) => cur + (target - cur) * Math.min(1, fdt * rate);
+    const bigTarget = 1 + this.nervous * 0.2 + this.charge * 0.1 + (this.accentT > 0 ? 0.22 : 0) + act.brow * 0.06 + (eyesMode === 'pop' ? 0.4 : eyesMode === 'wide' ? 0.15 : 0);
+    this.bigS = glide(this.bigS, bigTarget, 18);
+    const lidTarget = eyesMode === 'squint' || (vil && laughing) ? 1 : vil && !eyesMode && this.accentT === 0 && !glow ? 0.55 : 0;
+    this.lidS = glide(this.lidS, lidTarget, 14);
     for (const ex of [fx - 36, fx + 30]) {
       const shut = eyesMode === 'closed' || (eyesMode === 'wink' && ex < fx);
       if ((laughing && !vil) || shut) {
@@ -694,7 +708,7 @@ export class Smokestack {
         else k.hose(ex - 20, eyeY + 8, ex, eyeY - 22, ex + 20, eyeY + 8, 7);
         continue;
       }
-      const big = 1 + this.nervous * 0.2 + this.charge * 0.1 + (this.accentT > 0 ? 0.22 : 0) + act.brow * 0.06 + (eyesMode === 'pop' ? 0.4 : eyesMode === 'wide' ? 0.15 : 0);
+      const big = this.bigS;
       if (vil) k.ellipse(ex, eyeY + 2, 31 * big, 41 * big, 0x6e685c, 0); // sunken sockets
       const white = glow ? 0x141414 : red ? 0xe8b0a0 : vil ? 0xe2dccb : PAPER;
       k.ellipse(ex, eyeY, 25 * big, 34 * big, white, 4);
@@ -705,16 +719,22 @@ export class Smokestack {
       } else {
         k.pieEye(ex + lx * 8, eyeY + ly * 10, 10 * pupilScale, 16 * pupilScale, lx, ly, act.blinking && !laughing, white);
       }
-      // lids: a heavy squint, or (villain) always half-lidded and watchful
-      if (eyesMode === 'squint' || (vil && laughing)) k.hose(ex - 26 * big, eyeY - 8, ex, eyeY - 18, ex + 26 * big, eyeY - 8, 9, INK);
-      else if (vil && !eyesMode && this.accentT === 0 && !glow) k.hose(ex - 25 * big, eyeY - 15, ex, eyeY - 27 * big, ex + 25 * big, eyeY - 15, 7, INK);
+      // lids slide down: none → villain's half-lid → heavy squint
+      const L = this.lidS;
+      if (L > 0.04) {
+        const edge = eyeY - 30 * big + L * (30 * big - 8);
+        k.hose(ex - 26 * big, edge, ex, edge - 10 - (1 - L) * 4, ex + 26 * big, edge, 6 + L * 3, INK);
+      }
     }
 
     // brows: angry (inner ends down) ↔ worried (inner ends up)
     const baseAnger = vil ? Math.max(this.anger, 0.7) : this.anger;
     let mood = laughing ? (vil ? 0.9 : 0.2) : Phaser.Math.Clamp(baseAnger + this.charge * 0.6 - this.nervous * 1.6, -1, 1);
     if (pose.mood !== undefined) mood = pose.mood;
-    const raise = Math.max(act.brow, pose.raise ?? 0);
+    this.moodS = glide(this.moodS, mood, 12);
+    mood = this.moodS;
+    this.raiseS = glide(this.raiseS, Math.max(act.brow, pose.raise ?? 0), 16);
+    const raise = this.raiseS;
     for (const [ex, side] of [[fx - 36, -1], [fx + 30, 1]] as const) {
       const by = eyeY - 46 - this.nervous * 10 - (laughing ? 6 : 0) - raise * 14;
       const outerX = ex + side * 28;
