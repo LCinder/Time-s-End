@@ -1,0 +1,64 @@
+# Mirror on the Lid — Miss Pirouette (the song in the game)
+#
+# One stanza of the duel per verse block (public/data/levels/pirouette.json, `sections`).
+#   ^WORD   a SHOUTED word (the attack it announces)
+# A waltz in 3/4. Three turns of her key: music-box waltz, minuet, frantic waltz.
+
+[intro]
+Oh! The lid... the light... a visitor? How rude!
+Well, don't just stand there, darling... the show must go on!
+
+[first turn: Ping, ping, ping]
+Hear my music box go ping, ping, ping, every ^NOTE is meant for you,
+Send it back if you keep time, little clock, and I'll dance right through!
+[Watch me twirl!]
+Watch me ^TWIRL! And mind your feet, my tulle is sharp, my turn is neat!
+Round I go on silver toes, the floor is mine from head to feet!
+[Mirror, mirror on the lid]
+^MIRROR, mirror on the lid, who's the fairest one of all?
+She keeps dancing when I do, she's the only friend I've got at all.
+[Close the lid... and hush]
+Close the lid... and ^HUSH... in the dark I'm all alone,
+Every tick, a little step, every step a little stone.
+[Every night for no one]
+Every night the same sweet song, and every night for no one... but you?
+One-two-three, one-two-three, I have danced since nineteen-two!
+
+[second turn: A minuet must have a partner]
+Click! Click! Wind me up again!
+A minuet must have a partner, a bow, a step, a turn,
+I'll show you once, you follow twice, come on, it's time you learn!
+[Step and step and turn! Now you!]
+^STEP and ^STEP and ^TURN! Now you!
+^STEP and ^STEP and ^TURN! Now you!
+[The velvet cushions rise]
+Round and round the little stage, the velvet cushions rise,
+Mind the pillows, mind the gap, and never close your eyes!
+[THUMP before your eyes]
+And the pins upon the cylinder go ^THUMP before your eyes!
+^THUMP and ^THUMP and ^THUMP again, a partner never dies!
+[Oh... you do it too]
+^STEP and ^STEP and ^TURN! Now you do it too...
+Nobody ever followed me... the way that you do...
+
+[third turn: Faster, faster, spin me round]
+Click! Click! Faster! Wind me up again!
+Faster, faster, spin me round, I'll never, ever stop!
+Faster, faster, spin me round, until the springs go pop!
+[Kick! Kick! Kick!]
+^KICK! ^KICK! A fouetté, I'll dance until I drop!
+^KICK! ^KICK! Another one, I'll never, ever stop!
+[Fifty years of dust and moths]
+Fifty years of dust and ^MOTHS come fluttering from the seams,
+And my ^MIRROR girl is breaking free, she's dancing out of my dreams!
+[Bravo! Bravo!]
+^BRAVO! ^BRAVO! Throw me flowers, throw me roses, throw them all!
+^BRAVO! ^BRAVO! Curtain up, the curtain mustn't fall!
+[The audience that never came]
+For the audience that never came... that never came at all...
+I danced for empty velvet seats... I danced for no one at all...
+
+[winding down]
+I'm... winding... down...
+Was... someone... watching...?
+Thank you.

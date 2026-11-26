@@ -30,20 +30,28 @@ export class SplashScene extends Phaser.Scene {
     const press = this.add.text(640, 450, 'PRESS ANY KEY', { fontFamily: 'Rye, Georgia, serif', fontSize: '40px', color: '#f4efe4' }).setOrigin(0.5);
     this.tweens.add({ targets: press, alpha: 0.2, yoyo: true, repeat: -1, duration: 600 });
 
+    const test = Game.config.testStage !== false;
+    if (test) {
+      this.add
+        .text(640, 530, 'T  ·  test stage (any level, cue mark or set piece)', { fontFamily: 'Limelight, Georgia, serif', fontSize: '18px', color: '#9d968a' })
+        .setOrigin(0.5);
+    }
+
     let started = false;
-    const go = async (): Promise<void> => {
+    const go = async (ev?: KeyboardEvent): Promise<void> => {
       if (started) return;
       started = true;
       const e = AudioEngine.get();
       await e.resume();
       e.configure({ master: Game.config.masterVolume, music: Game.settings.music, sfx: Game.settings.sfx, vintage: Game.config.vintageAudio });
       sfx('select');
-      if (this.skipTo && Game.levels[this.skipTo]) this.scene.start('Chase', { levelId: this.skipTo });
+      if (test && (ev?.key === 't' || ev?.key === 'T')) this.scene.start('Test');
+      else if (this.skipTo && Game.levels[this.skipTo]) this.scene.start('Chase', { levelId: this.skipTo });
       else if (this.skipTo && Game.platformLevels[this.skipTo]) this.scene.start('Platform', { levelId: this.skipTo });
       else this.scene.start('Title');
     };
     this.input.keyboard?.once('keydown', go);
-    this.input.once('pointerdown', go);
-    this.input.gamepad?.once('down', go);
+    this.input.once('pointerdown', () => go());
+    this.input.gamepad?.once('down', () => go());
   }
 }

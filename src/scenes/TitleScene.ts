@@ -4,6 +4,7 @@
 
 import Phaser from 'phaser';
 import { PlaceholderSong } from '../audio/Songs';
+import { sfx } from '../audio/Sfx';
 import { Conductor } from '../core/Conductor';
 import { Game } from '../core/Game';
 import { Input } from '../core/Input';
@@ -34,7 +35,7 @@ export function continueGame(scene: Phaser.Scene, save: SaveData): void {
   Game.save = save;
   Game.settings.lastSlot = save.slot;
   Game.saveSettings();
-  if (save.resume && (Game.levels[save.resume.levelId] || Game.platformLevels[save.resume.levelId])) {
+  if (save.resume && Game.levelInfo(save.resume.levelId)) {
     scene.scene.start('Resume', { levelId: save.resume.levelId, cue: save.resume.cue });
     return;
   }
@@ -68,6 +69,8 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     this.leaving = false;
+    // a test-stage start point does not carry over into a real game
+    Game.startBeat = 0;
     this.scenery = new Scenery(this, 600);
     const ground = this.add.graphics().setDepth(20);
     ground.fillStyle(0x5f5246, 1);
@@ -123,6 +126,23 @@ export class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(31);
+
+    // the test stage, in plain sight for whoever is building the game (game.json "testStage")
+    if (Game.config.testStage !== false) {
+      const btn = this.add
+        .text(28, 22, '▶ TEST STAGE  (T)', { fontFamily: 'Rye, Georgia, serif', fontSize: '22px', color: '#f4efe4', backgroundColor: '#141414', padding: { x: 12, y: 6 } })
+        .setDepth(40)
+        .setInteractive({ useHandCursor: true });
+      const open = (): void => {
+        if (this.leaving) return;
+        sfx('select');
+        this.leave(() => this.scene.start('Test'));
+      };
+      btn.on('pointerdown', open);
+      btn.on('pointerover', () => btn.setColor('#ffe9a8'));
+      btn.on('pointerout', () => btn.setColor('#f4efe4'));
+      this.input.keyboard?.on('keydown-T', open);
+    }
 
     this.tick = new Player(this, 1090, 600, Game.config.player);
     addFilm(this, 'bw1928');

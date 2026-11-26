@@ -1,0 +1,99 @@
+{
+  "comment": "Miss Pirouette's parts (version D, made with Magnific; prompt in PROMPT.txt). The game builds her puppet from these: the body with the blank porcelain face, the tiara, the heart key in her back, three gloves and a pointe shoe. Run: npm run art -- pirouette",
+  "sheets": [
+    {
+      "file": "01",
+      "type": "objects",
+      "grayscale": true,
+      "names": [
+        "pirBody",
+        "pirTiara",
+        "pirKey",
+        "pirGloveOpen",
+        "pirGloveFist",
+        "pirGlovePoint",
+        "pirShoe"
+      ],
+      "anchors": {
+        "pirBody": {
+          "waist": [
+            165,
+            340
+          ],
+          "head": [
+            168,
+            135
+          ],
+          "face": [
+            192,
+            150
+          ],
+          "shoulderL": [
+            100,
+            272
+          ],
+          "shoulderR": [
+            230,
+            272
+          ],
+          "hipL": [
+            142,
+            430
+          ],
+          "hipR": [
+            188,
+            430
+          ],
+          "bun": [
+            140,
+            52
+          ]
+        },
+        "pirKey": {
+          "pivot": [
+            112,
+            75
+          ],
+          "handle": [
+            45,
+            25
+          ]
+        },
+        "pirShoe": {
+          "ankle": [
+            52,
+            82
+          ],
+          "toe": [
+            218,
+            122
+          ]
+        }
+      }
+    },
+    {
+      "file": "02",
+      "type": "picture",
+      "grayscale": true,
+      "name": "musicboxBack",
+      "comment": "the inside of the music box: the arena"
+    },
+    {
+      "file": "03",
+      "type": "objects",
+      "grayscale": true,
+      "names": [
+        "mbTurntable",
+        "mbCylinder",
+        "mbComb",
+        "mbCushion",
+        "mbNote",
+        "mbMoth",
+        "mbBouquet"
+      ],
+      "seeThrough": [
+        "mbComb"
+      ]
+    }
+  ]
+}

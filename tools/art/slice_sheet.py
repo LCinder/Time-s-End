@@ -24,7 +24,9 @@ A sheet of separate PARTS for a puppet ("type": "parts") works too:
       "sheet": "parts.jpg",
       "scale": 2,                                   enlarge every part (smoother when shown big)
       "parts": { "body": [380, 260], "hat": [772, 130], ... },   a point inside each part
-      "anchors": { "face": [576, 243, 41, 64], "wheels": [[182, 358, 58], ...], ... }
+      "anchors": { "face": [576, 243, 41, 64], "wheels": [[182, 358, 58], ...], ... },
+      "flip": ["gloveFist"]                         parts to mirror: the three gloves must have
+                                                    the thumb on the right (a left hand, palm out)
     }
   Writes public/art/<boss>/<part>.png and a manifest with every part's size and the
   anchors moved into the body picture's own pixels.
@@ -262,27 +264,231 @@ def find_face(rgba: np.ndarray, lum: np.ndarray, facing: str) -> tuple[int, int,
     return best
 
 
+def ncc_map(img: np.ndarray, tpl: np.ndarray) -> np.ndarray:
+    """Normalised cross-correlation of a template over an image (FFT), top-left indexed."""
+    H, W = img.shape
+    h, w = tpl.shape
+    t = tpl - tpl.mean()
+    tn = np.sqrt((t * t).sum()) + 1e-9
+    shape = (H + h, W + w)
+    corr = np.fft.irfft2(np.fft.rfft2(img, s=shape) * np.fft.rfft2(t[::-1, ::-1], s=shape), s=shape)[h - 1 : H, w - 1 : W]
+    def box(a: np.ndarray) -> np.ndarray:
+        c = np.pad(a, ((1, 0), (1, 0))).cumsum(0).cumsum(1)
+        return c[h:, w:] - c[:-h, w:] - c[h:, :-w] + c[:-h, :-w]
+    s1 = box(img)
+    s2 = box(img * img)
+    var = np.maximum(s2 - s1 * s1 / (h * w), 1e-9)
+    return corr / (np.sqrt(var) * tn)
+
+
+def find_wheels(body: np.ndarray, ground: float) -> list[tuple[float, float, float, float]]:
+    """Wheels on the body: round dark outlines in the lower part that sit on the ground.
+
+    A circle Hough transform on the outline pixels gives candidate centres; a real wheel
+    touches the ground, so its radius is (ground - centre y); the candidate is kept if a
+    dark outline really runs along that circle. Returns [(x, y, r, score)] in body px.
+    """
+    f = 4
+    b = body[::f, ::f]
+    lum = b[..., :3].astype(np.float64) @ [0.299, 0.587, 0.114]
+    solid = b[..., 3] > 128
+    light = (lum > 140) & solid
+    near_light = np.zeros_like(light)
+    near_light[1:, :] |= light[:-1, :]
+    near_light[:-1, :] |= light[1:, :]
+    near_light[:, 1:] |= light[:, :-1]
+    near_light[:, :-1] |= light[:, 1:]
+    edge = (lum < 80) & solid & near_light
+    H, W = edge.shape
+    ys, xs = np.nonzero(edge)
+    keep = ys > H * 0.45
+    ys, xs = ys[keep], xs[keep]
+    peaks: list[tuple[float, int, int, int]] = []
+    for r in range(max(4, int(W * 0.03)), max(6, int(W * 0.14))):
+        acc = np.zeros((H, W))
+        ang = np.linspace(0, 2 * np.pi, max(12, int(2 * np.pi * r)), endpoint=False)
+        cx = (xs[:, None] + r * np.cos(ang)[None, :]).round().astype(int).ravel()
+        cy = (ys[:, None] + r * np.sin(ang)[None, :]).round().astype(int).ravel()
+        ok = (cx >= 0) & (cx < W) & (cy >= 0) & (cy < H)
+        np.add.at(acc, (cy[ok], cx[ok]), 1)
+        for _ in range(6):
+            i = int(np.argmax(acc))
+            y, x = divmod(i, W)
+            peaks.append((acc[y, x] / (2 * np.pi * r), x * f, y * f, r * f))
+            acc[max(0, y - r) : y + r, max(0, x - r) : x + r] = 0
+    full_lum = body[..., :3].astype(np.float64) @ [0.299, 0.587, 0.114]
+    dark = (full_lum < 90) & (body[..., 3] > 128)
+    def ring_score(x: float, y: float, r: float) -> float:
+        a = np.linspace(0, 2 * np.pi, 96, endpoint=False)
+        hits = 0
+        for dr in (-3, 0, 3):
+            px = np.clip((x + (r + dr) * np.cos(a)).astype(int), 0, body.shape[1] - 1)
+            py = np.clip((y + (r + dr) * np.sin(a)).astype(int), 0, body.shape[0] - 1)
+            hits = np.maximum(hits, dark[py, px].astype(int))
+        return float(np.mean(hits))
+    found: list[tuple[float, float, float, float]] = []
+    for _, x, y, r in peaks:
+        best = None
+        for dx in np.linspace(-0.25, 0.25, 7) * r:
+            for dy in np.linspace(-0.25, 0.25, 7) * r:
+                cx, cy = x + dx, y + dy
+                rr = ground - cy  # a wheel sits on the ground
+                if rr < r * 0.5 or rr > r * 1.9 or rr < 8:
+                    continue
+                sc = ring_score(cx, cy, rr)
+                if best is None or sc > best[3]:
+                    best = (cx, cy, rr, sc)
+        if best and best[3] >= 0.55:
+            found.append(best)
+    found.sort(key=lambda t: -t[3])
+    kept: list[tuple[float, float, float, float]] = []
+    for c in found:
+        if all((c[0] - k[0]) ** 2 + (c[1] - k[1]) ** 2 > (1.5 * max(c[2], k[2])) ** 2 for k in kept):
+            kept.append(c)
+    return kept
+
+
+def auto_anchors(body: np.ndarray, parts: dict, facing: str) -> dict:
+    """Find the face plate, nose, ground, top (smokestack/head) and wheels on the body picture."""
+    a = body[..., 3] > 128
+    rows = np.nonzero(a.any(axis=1))[0]
+    cols = np.nonzero(a.any(axis=0))[0]
+    ground = int(rows.max())
+    nose = int(cols.max() if facing == "right" else cols.min())
+    lum = body[..., :3].astype(np.float64) @ [0.299, 0.587, 0.114]
+    # the face plate: the biggest round-ish light area, preferring the front
+    light = (lum > 150) & (body[..., 3] > 200)
+    lab, n = label(light[::2, ::2])
+    best, best_score = None, 0.0
+    W = body.shape[1]
+    for comp in range(1, n + 1):
+        yy, xx = np.nonzero(lab == comp)
+        if len(yy) < 80:
+            continue
+        bw, bh = int(np.ptp(xx)) + 1, int(np.ptp(yy)) + 1
+        if not 0.45 < bw / bh < 2.2:
+            continue
+        fill = len(yy) / (np.pi / 4 * bw * bh)  # 1 for an ellipse
+        cx = (xx.min() + xx.max()) / 2 * 2
+        front = cx / W if facing == "right" else 1 - cx / W
+        score = len(yy) * min(fill, 1.0) ** 3 * (0.3 + front) ** 2
+        if score > best_score:
+            best_score = score
+            best = [float(cx), float(yy.min() + yy.max()), bw, bh]
+    if best is None:
+        fail("could not find the face plate (a round light area on the body). Add \"anchors\": {\"face\": [x, y, rx, ry]} to art.json.")
+    fx, fy, bw, bh = best
+    face = [fx, fy, float(bw), float(bh)]  # labelled at half size: bw, bh are the radii in full px
+    # the top: a smokestack, a head... the highest part, and where it widens into the body
+    top = int(rows.min())
+    cap = np.nonzero(a[top : top + 10].any(axis=0))[0]
+    tx = float(cap.mean())
+    cap_w = max(1, int(np.ptp(cap)) + 1)
+    base = top + int(0.25 * (ground - top))
+    for y in range(top + 12, ground):
+        run = np.nonzero(a[y, max(0, int(tx) - 3 * cap_w) : int(tx) + 3 * cap_w])[0]
+        if run.size and np.ptp(run) + 1 > 2.6 * cap_w:
+            base = y
+            break
+    anchors = {"face": face, "noseX": nose, "ground": ground, "chimney": [tx, float(top), float(base)]}
+    if "wheel" in parts:
+        wheels = find_wheels(body, ground)
+        if wheels:
+            rmax = max(w[2] for w in wheels)
+            big = sorted([w for w in wheels if w[2] >= 0.75 * rmax], key=lambda w: w[0])
+            small = [w for w in wheels if w[2] < 0.75 * rmax and w[2] >= 0.3 * rmax and w[1] > ground - 3 * rmax]
+            anchors["wheels"] = [[round(w[0], 1), round(w[1], 1), round(w[2], 1)] for w in big]
+            if small:
+                s = max(small, key=lambda w: w[3])
+                anchors["frontWheel"] = [round(s[0], 1), round(s[1], 1), round(s[2], 1)]
+    f = anchors["face"]
+    anchors["shoulders"] = [[f[0] - f[2] * 1.45, f[1] + f[3] * 0.5], [f[0] - f[2] * 4, f[1]]]
+    return anchors
+
+
+def draw_preview(path: Path, body: np.ndarray, parts: dict, anchors: dict) -> None:
+    """A picture to check what was detected: the body with its anchors, and every part with its name."""
+    from PIL import ImageDraw
+    b = Image.fromarray(body, "RGBA")
+    thumbs = [(n, Image.fromarray(p, "RGBA")) for n, p in parts.items() if n != "body"]
+    th = 160
+    W = max(b.width, sum(int(t.width * th / t.height) + 20 for _, t in thumbs) + 20)
+    H = b.height + th + 70
+    img = Image.new("RGBA", (W, H), (120, 140, 120, 255))
+    img.alpha_composite(b, (0, 0))
+    d = ImageDraw.Draw(img)
+    fx, fy, rx, ry = anchors["face"]
+    d.ellipse((fx - rx, fy - ry, fx + rx, fy + ry), outline=(255, 0, 0, 255), width=4)
+    for w in anchors.get("wheels", []) + ([anchors["frontWheel"]] if "frontWheel" in anchors else []):
+        d.ellipse((w[0] - w[2], w[1] - w[2], w[0] + w[2], w[1] + w[2]), outline=(0, 80, 255, 255), width=4)
+    cx, ct, cb = anchors["chimney"]
+    d.line((cx, ct, cx, cb), fill=(0, 200, 0, 255), width=5)
+    d.line((0, anchors["ground"], b.width, anchors["ground"]), fill=(0, 255, 255, 255), width=3)
+    d.line((anchors["noseX"], 0, anchors["noseX"], b.height), fill=(255, 200, 0, 255), width=3)
+    for sx, sy in anchors.get("shoulders", []):
+        d.ellipse((sx - 8, sy - 8, sx + 8, sy + 8), fill=(255, 0, 255, 255))
+    x = 20
+    for name, t in thumbs:
+        t2 = t.resize((max(1, int(t.width * th / t.height)), th))
+        img.alpha_composite(t2, (x, b.height + 40))
+        d.text((x, b.height + 15), name, fill=(255, 255, 255, 255))
+        x += t2.width + 20
+    d.text((10, 10), "red: face  blue: wheels  green: top/smokestack  cyan: ground  yellow: nose  pink: shoulders", fill=(255, 255, 255, 255))
+    img.convert("RGB").save(path)
+
+
 def slice_parts(boss: str, spec: dict, src_dir: Path) -> None:
-    """Cut every part of a puppet sheet out on its own, plus the body's anchor points."""
+    """Cut every part of a puppet sheet out on its own, find the body's anchor points, write a preview.
+
+    "parts" is either a list of names in reading order (the body is the biggest drawing, the
+    others are taken left to right, top to bottom) or {name: [x, y]} with a point inside each.
+    "anchors" is optional: whatever is missing is found automatically.
+    """
     sheet = Image.open(src_dir / spec["sheet"]).convert("RGB")
     rgb = np.array(sheet)
     lum = rgb.astype(np.float64) @ [0.299, 0.587, 0.114]
-    scale = float(spec.get("scale", 1))
-    hints: dict = spec["parts"]
-    print(f"· {spec['sheet']}: {sheet.width} x {sheet.height}, {len(hints)} parts, x{scale:g}")
+    scale = float(spec.get("scale", 2))
+    facing = spec.get("facing", "right")
+    names_or_hints = spec.get("parts", ["body", "hat", "mustache", "gloveOpen", "gloveFist", "glovePoint", "wheel"])
+    print(f"· {spec['sheet']}: {sheet.width} x {sheet.height}")
     small = lum[::2, ::2] < INK_LEVEL
     lab, n = label(dilate(small, 3))
     sizes = np.bincount(lab.ravel())
     sizes[0] = 0
     owner_of: dict[str, int] = {}
-    for name, (hx, hy) in hints.items():
-        y, x = int(hy) // 2, int(hx) // 2
-        comp = int(lab[y, x])
-        if comp == 0:  # the hint fell on white: take the nearest drawing
-            ys, xs = np.nonzero(lab)
-            i = int(np.argmin((ys - y) ** 2 + (xs - x) ** 2))
-            comp = int(lab[ys[i], xs[i]])
-        owner_of[name] = comp
+    if isinstance(names_or_hints, dict):
+        for name, (hx, hy) in names_or_hints.items():
+            y, x = int(hy) // 2, int(hx) // 2
+            comp = int(lab[y, x])
+            if comp == 0:  # the hint fell on white: take the nearest drawing
+                ys, xs = np.nonzero(lab)
+                i = int(np.argmin((ys - y) ** 2 + (xs - x) ** 2))
+                comp = int(lab[ys[i], xs[i]])
+            owner_of[name] = comp
+    else:
+        names = list(names_or_hints)
+        big = [c for c in range(1, n + 1) if sizes[c] > sizes.max() * 0.02]
+        if len(big) < len(names):
+            fail(f"found {len(big)} separate drawings but art.json lists {len(names)} parts ({', '.join(names)}). Leave white space between the parts.")
+        big = sorted(big, key=lambda c: -sizes[c])[: len(names)]
+        body = big[0]
+        rest = big[1:]
+        # reading order: rows (by vertical centre), then left to right
+        boxes = {}
+        for c in rest:
+            yy, xx = np.nonzero(lab == c)
+            boxes[c] = (xx.min(), yy.min(), xx.max(), yy.max())
+        rows: list[list[int]] = []
+        for c in sorted(rest, key=lambda c: (boxes[c][1] + boxes[c][3]) / 2):
+            cy = (boxes[c][1] + boxes[c][3]) / 2
+            if rows and abs(cy - np.mean([(boxes[r][1] + boxes[r][3]) / 2 for r in rows[-1]])) < (boxes[c][3] - boxes[c][1]) * 0.6:
+                rows[-1].append(c)
+            else:
+                rows.append([c])
+        ordered = [c for r in rows for c in sorted(r, key=lambda c: boxes[c][0])]
+        owner_of["body" if names[0] == "body" else names[0]] = body
+        for name, c in zip([nm for nm in names if nm != "body"], ordered):
+            owner_of[name] = c
     # loose bits go with the nearest part
     taken = set(owner_of.values())
     centres = {name: np.argwhere(lab == c).mean(axis=0) for name, c in owner_of.items()}
@@ -298,7 +504,7 @@ def slice_parts(boss: str, spec: dict, src_dir: Path) -> None:
     for old in out_dir.glob("*.png"):
         old.unlink()
     parts = {}
-    body_origin = (0, 0)
+    images: dict[str, np.ndarray] = {}
     for name, m in full_owner.items():
         own = dilate(np.kron(m, np.ones((2, 2), dtype=bool))[: lum.shape[0], : lum.shape[1]], 2)
         ys, xs = np.nonzero(own)
@@ -309,29 +515,46 @@ def slice_parts(boss: str, spec: dict, src_dir: Path) -> None:
         img = Image.fromarray(cut, "RGBA")
         if scale != 1:
             img = img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
+        if name in spec.get("flip", []):
+            # mirrored so all the gloves have the thumb on the same side (image AIs mix them up):
+            # we see the character's left side, so the near hand is a left hand shown palm out,
+            # thumb on the right
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
         img.save(out_dir / f"{name}.png", optimize=True)
-        parts[name] = {"file": f"{name}.png", "w": img.width, "h": img.height}
-        if name == "body":
-            body_origin = (x0, y0)
+        images[name] = np.array(img)
+        parts[name] = {"file": f"{name}.png", "w": img.width, "h": img.height, "origin": [x0, y0]}
         print(f"  {name:12s} {img.width:5d} x {img.height:<5d}")
-
-    def to_body(v):  # sheet px -> body picture px
+    if "body" not in images:
+        fail('one of the parts must be called "body"')
+    # anchors: found automatically in the (enlarged) body picture; art.json can override any
+    anchors = auto_anchors(images["body"], images, facing)
+    anchors["face"] = [round(v, 1) for v in anchors["face"]]  # centre and radii, body px
+    bo = parts["body"]["origin"]
+    def to_body(v):  # sheet px -> body picture px (for anchors given by hand in art.json)
         if isinstance(v, (int, float)):
             return v * scale
         if isinstance(v, list) and v and isinstance(v[0], list):
             return [to_body(e) for e in v]
-        out = [(v[0] - body_origin[0]) * scale, (v[1] - body_origin[1]) * scale]
-        return out + [e * scale for e in v[2:]]
-
-    anchors = {}
+        return [(v[0] - bo[0]) * scale, (v[1] - bo[1]) * scale] + [e * scale for e in v[2:]]
     for k, v in spec.get("anchors", {}).items():
-        if k in ("ground", "noseX"):
-            anchors[k] = (v - (body_origin[1] if k == "ground" else body_origin[0])) * scale
+        if k == "ground":
+            anchors[k] = (v - bo[1]) * scale
+        elif k == "noseX":
+            anchors[k] = (v - bo[0]) * scale
         else:
             anchors[k] = to_body(v)
-    manifest = {"boss": boss, "type": "parts", "parts": parts, "anchors": anchors, "source": f"art/{boss}/{spec['sheet']}"}
+    for p in parts.values():
+        p.pop("origin", None)
+    manifest = {"boss": boss, "type": "parts", "facing": facing, "parts": parts, "anchors": anchors, "source": f"art/{boss}/{spec['sheet']}"}
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    print(f"✓ wrote {len(parts)} parts + manifest.json to public/art/{boss}/")
+    draw_preview(src_dir / "preview.png", images["body"], images, anchors)
+    # the list of every character built, for the game's puppet viewer
+    built = sorted(d.name for d in (ROOT / "public" / "art").iterdir() if (d / "manifest.json").exists())
+    (ROOT / "public" / "art" / "index.json").write_text(json.dumps({"characters": built}, indent=2) + "\n", encoding="utf-8")
+    a = anchors
+    print(f"· face at ({a['face'][0]:.0f}, {a['face'][1]:.0f}) radii {a['face'][2]:.0f} x {a['face'][3]:.0f}; "
+          f"{len(a.get('wheels', []))} wheels{' + front wheel' if 'frontWheel' in a else ''}; ground {a['ground']:.0f}; nose {a['noseX']:.0f}")
+    print(f"✓ wrote {len(parts)} parts + manifest.json to public/art/{boss}/ and a check picture: art/{boss}/preview.png")
 
 
 def main() -> None:

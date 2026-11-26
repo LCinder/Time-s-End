@@ -4,8 +4,11 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/agents/
 tools/song-analysis/.cache/
 __pycache__/
 tools/song-analysis/.venv/
 tools/art/.venv/
+art/clips/

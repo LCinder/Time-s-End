@@ -14,10 +14,20 @@ export function spawnBeatOf(e: LevelEvent, diff: DifficultySpec): number {
     case 'smokeRing': return e.beat - n('travelBeats', 2) / diff.hazardSpeedMultiplier;
     case 'bossLunge': return e.beat - n('telegraphBeats', diff.telegraphBeats);
     case 'ticketCheck': return e.beat - 3;
-    case 'holePunch': return e.beat - n('biteBeats', 1.5) - 1.2;
-    case 'crossing': return e.beat - 5;
-    case 'cuckoos': return e.beat - 5;
-    case 'pendulum': return e.beat - 6;
+    case 'holePunch': return e.beat - n('biteBeats', 1.5) - 1.4;
+    // set pieces standing by the track: created while still off-screen, so they arrive with the scenery
+    case 'crossing': return e.beat - 11;
+    case 'cuckoos': return e.beat - 11;
+    case 'pendulum': return e.beat - 11;
+    case 'waterStop': return e.beat - 11;
+    case 'trackSwitch': return e.beat - 11;
+    case 'unwindKey': return e.beat - 1.5;
+    case 'ghostWatches': return e.beat - 0.5;
+    case 'redSignal': return e.beat - 11;
+    case 'timeStop': return e.beat - 3;
+    case 'tunnelListen': return e.beat - 3;
+    case 'pianoKeys': return e.beat - 3;
+    case 'roofRun': return e.beat - 9;
     default: return e.beat;
   }
 }

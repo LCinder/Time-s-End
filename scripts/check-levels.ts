@@ -3,11 +3,12 @@
 //   npm run check -- --quiet         only errors
 //   npm run check -- --level <id>    only that level
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { checkLevel, formatIssue } from '../src/core/levelCheck';
+import { checkDuel } from '../src/core/duelCheck';
 import { checkPlatformMap } from '../src/core/mapCheck';
-import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../src/core/validate';
+import { DataError, validateControls, validateDifficulties, validateDuel, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../src/core/validate';
 
 const root = resolve(import.meta.dirname, '..');
 const quiet = process.argv.includes('--quiet');
@@ -56,9 +57,24 @@ try {
   const story = validateStory(read('data/story.json'), 'data/story.json');
   console.log(`\ndata/story.json: ${story.chapters.length} chapter(s) OK`);
   for (const ch of story.chapters) {
-    if (!game.levels.includes(ch.feature)) {
-      console.log(`  ERROR  chapter ${ch.id}: feature "${ch.feature}" is not in game.json "levels"`);
-      errors++;
+    if (!game.levels.includes(ch.feature) && (!only || only === ch.feature)) {
+      // not a chase: it must be a duel level of its own
+      const rel = `data/levels/${ch.feature}.json`;
+      try {
+        const raw = read(rel);
+        const D = validateDuel(raw, rel);
+        const issues = checkDuel(raw, (f) => existsSync(resolve(root, 'public', f)));
+        const e = issues.filter((i) => i.level === 'error').length;
+        errors += e;
+        warnings += issues.length - e;
+        console.log(`${rel}: duel, ${D.phases.length} phases, ${e} error(s), ${issues.length - e} warning(s)`);
+        for (const i of issues) if (!quiet || i.level === 'error') console.log(`  ${i.level === 'error' ? 'ERROR  ' : 'warning'}  ${i.where}: ${i.message}`);
+      } catch (err) {
+        if (!(err instanceof DataError)) throw err;
+        console.log(`  ERROR  chapter ${ch.id}: feature "${ch.feature}" is neither in game.json "levels" nor a valid duel (${rel})`);
+        err.problems.forEach((p) => console.log(`  ERROR  ${p}`));
+        errors += 1 + err.problems.length;
+      }
     }
     for (const id of ch.interludes.filter((l) => !only || l === only)) {
       const rel = `data/levels/${id}.json`;

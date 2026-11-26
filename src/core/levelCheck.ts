@@ -44,7 +44,7 @@ export const DEFAULT_RULES: CheckRules = {
  *  hops over several beats, words are platforms: neither needs a reaction at `beat`). */
 const ACTION_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'holePunch', 'crossing', 'cuckoos', 'pendulum']);
 /** Hazards whose arrival should be on the musical grid. */
-const ON_GRID_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'coal', 'holePunch', 'crossing', 'cuckoos', 'pendulum', 'ticketCheck']);
+const ON_GRID_TYPES = new Set(['gap', 'drop', 'groundWave', 'smokeRing', 'bossLunge', 'coal', 'holePunch', 'crossing', 'cuckoos', 'pendulum', 'ticketCheck', 'redSignal', 'pianoKeys', 'roofRun']);
 /** Events made of several parts, each needing its own reaction (count × spacingBeats). */
 const MULTI_TYPES = new Set(['crossing', 'cuckoos', 'pendulum']);
 
@@ -115,6 +115,8 @@ export function checkLevel(
         (o) => o.type === 'lyricObject' && o.beat >= e.beat - 2 && o.beat <= e.beat + lengthBeats,
       );
       if (platforms) continue; // stepping stones (the final chasm): not a plain jump
+      const keyboard = level.events.some((o) => o.type === 'pianoKeys' && o.beat <= e.beat + 0.01 && o.beat + Number(o.lengthBeats ?? 0) >= e.beat + lengthBeats - 0.01);
+      if (keyboard) continue; // a piano keyboard lies across it
       const air = (2 * player.jumpVelocity) / player.gravity;
       const camSpeed = ppb / conductor.secondsPerBeat(e.beat);
       const relaxed = camSpeed * air; // just jumping, no → held

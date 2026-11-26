@@ -10,6 +10,7 @@ import { startLevel } from '../core/flow';
 import { Game } from '../core/Game';
 import { Input } from '../core/Input';
 import { addFrame, clockText, framesAvailable, newSave, type SaveData } from '../core/Save';
+import { Pirouette } from '../entities/Pirouette';
 import { Player } from '../entities/Player';
 import { Smokestack } from '../entities/Smokestack';
 import { ACTS, fillerAct, type ActName } from '../entities/SmokestackActs';
@@ -65,6 +66,8 @@ export class BijouScene extends Phaser.Scene {
   private lockedUntil = 0;
   private mirrorTrail: { x: number; y: number; f: number }[] = [];
   private seated: Smokestack | null = null;
+  /** Miss Pirouette, freed, dancing on top of the lost and found box */
+  private dancer: Pirouette | null = null;
   private seatTween: { x: number } | null = null;
   private particles: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
   private dustDirty = false;
@@ -99,6 +102,7 @@ export class BijouScene extends Phaser.Scene {
     this.cards = null;
     this.mirrorTrail = [];
     this.seated = null;
+    this.dancer = null;
     this.seatTween = null;
     this.particles = [];
     this.entering = false;
@@ -151,6 +155,7 @@ export class BijouScene extends Phaser.Scene {
     this.film = addFilm(this, 'bw1928');
 
     if (this.shownFreed >= 1 && !endingDue) this.seatSmokestack(false);
+    if (this.save.freed.includes('pirouette') && !(endingDue && feature === 'pirouette')) this.placeDancer();
     this.startMusic(this.shownFreed);
     this.events.once('shutdown', () => {
       this.music?.stop();
@@ -193,7 +198,8 @@ export class BijouScene extends Phaser.Scene {
       this.player.x = 44 * TILE;
       this.player.y = FLOOR.lobby;
     } else if (obj && obj.kind !== 'seat') {
-      this.player.x = obj.col * TILE + 20;
+      // beside the lost and found box, so Miss Pirouette on top of it can be seen
+      this.player.x = obj.col * TILE + 20 + (obj.kind === 'lostfound' ? 80 : 0);
       this.player.y = obj.floor;
     } else {
       this.player.x = this.save.hub.x;
@@ -239,6 +245,14 @@ export class BijouScene extends Phaser.Scene {
       }
       this.seated.lookTarget = { x: this.player.x, y: this.player.y - 60 };
       this.seated.update(dt, time, beat);
+    }
+    if (this.dancer) {
+      // her music box pose, turning slowly; a curtsy when Tick comes near
+      const near = Math.abs(this.player.x - this.dancer.x) < 120 && Math.abs(this.player.y - FLOOR.lobby) < 20;
+      this.dancer.pose = near ? 'curtsy' : 'stance';
+      this.dancer.dir = this.player.x < this.dancer.x ? -1 : 1;
+      this.dancer.lookTarget = { x: this.player.x, y: this.player.y - 60 };
+      this.dancer.update(dt, time, beat);
     }
     this.updateLights();
     this.updateHud(time);
@@ -355,7 +369,7 @@ export class BijouScene extends Phaser.Scene {
         this.say([{ text: 'A hatch up to the roof. It is locked tight.' }, { text: 'A note says: "Not before midnight."' }]);
         break;
       case 'desk': {
-        const found = Object.values(Game.platformLevels).filter((l) => l.lostObject && s.lostObjects.includes(l.lostObject.id)).map((l) => l.lostObject!);
+        const found = [...Object.values(Game.platformLevels), ...Object.values(Game.duels)].filter((l) => l.lostObject && s.lostObjects.includes(l.lostObject.id)).map((l) => l.lostObject!);
         this.say(found.length
           ? [{ text: "Elias' desk." }, ...found.map((f) => ({ text: `${f.name}.\n${f.text}` }))]
           : [{ text: "Elias' desk. Nothing on it but dust..." }, { text: '...and an old photograph of the Bijou on opening night, the hall full of people.' }]);
@@ -376,7 +390,8 @@ export class BijouScene extends Phaser.Scene {
         this.say([{ text: "Elias' coat. Something rustles in the pocket..." }, { text: 'Remember?', run: () => this.goLevel(o.level!) }]);
         break;
       case 'splicer':
-        if (spliced) this.say([{ text: `The reel of ${title} is whole again.` }]);
+        if (ch.entry === 'lostfound' && !s.freed.includes(ch.feature)) this.say([{ text: 'The splicer. No reel to mend tonight...' }, { text: 'But listen: a tinkling waltz, down in the lobby. The lost and found?' }]);
+        else if (spliced) this.say([{ text: `The reel of ${title} is whole again.` }]);
         else if (have >= need) {
           s.framesSpent += need;
           s.flags.spliced.push(ch.feature);
@@ -386,7 +401,8 @@ export class BijouScene extends Phaser.Scene {
         } else this.say([{ text: `The splicer. You need ${need} film frames to mend the reel of ${title}.` }, { text: `You have ${have}. Look in the newsreel, the serial, the sing-along, a memory... and up in the rafters.` }]);
         break;
       case 'projector':
-        if (threaded) this.say([{ text: `The projector hums. ${title} is on the screen!` }, { text: 'Go down to the stage and jump into the picture.' }]);
+        if (ch.entry === 'lostfound' && !s.freed.includes(ch.feature)) this.say([{ text: 'The projector is quiet tonight.' }, { text: 'The music is coming from the lost and found, down in the lobby.' }]);
+        else if (threaded) this.say([{ text: `The projector hums. ${title} is on the screen!` }, { text: 'Go down to the stage and jump into the picture.' }]);
         else if (spliced) {
           this.say([{ text: 'Thread the film through the projector... on the beat!', run: () => this.goMinigame('thread') }]);
         } else this.say([{ text: `The projector is empty. The reel of ${title} is missing frames: ${have} / ${need}.` }, { text: 'Find film frames around the Bijou and mend it at the splicer.' }]);
@@ -413,9 +429,21 @@ export class BijouScene extends Phaser.Scene {
       case 'mirror':
         this.say([{ text: 'Your reflection waves back...' }, { text: '...a moment after you do.' }]);
         break;
-      case 'lostfound':
-        this.say([{ text: 'Inside the box, something tiny plays a tinkling waltz.' }, { text: 'A music box! The lid is stuck shut... for now.' }]);
+      case 'lostfound': {
+        const box = Game.story.chapters.find((c) => c.entry === 'lostfound');
+        const open = !!box && (Game.chapter === box || s.freed.includes(box.feature));
+        if (!box || !open) this.say([{ text: 'Inside the box, something tiny plays a tinkling waltz.' }, { text: 'A music box! The lid is stuck shut... for now.' }]);
+        else if (s.freed.includes(box.feature)) {
+          this.say([{ text: 'Miss Pirouette dances on her music box, the lid wide open.' }, { text: '"Another dance, little clock?"  (▲ / ENTER: yes)', run: () => this.goLevel(box.feature) }]);
+        } else {
+          this.say([
+            { text: 'Under a heap of lost umbrellas and odd gloves... a music box. Its lid creaks open by itself!' },
+            { text: 'A tinkling waltz, and a tiny voice: "Who\'s there? Nobody ever comes to watch..."' },
+            { text: 'Climb inside the music box?  (▲ / ENTER: yes)', run: () => this.goLevel(box.feature) },
+          ]);
+        }
         break;
+      }
       case 'darkroom':
         this.say([{ text: 'DARKROOM - KEEP OUT.' }, { text: 'A red light glows under the door. It will open when the colours change.' }]);
         break;
@@ -536,6 +564,7 @@ export class BijouScene extends Phaser.Scene {
 
   private chapterEnding(): void {
     const ch = Game.chapter.feature === this.from ? Game.chapter : Game.story.chapters.find((c) => c.feature === this.from)!;
+    if (ch.feature === 'pirouette') return this.pirouetteEnding(ch);
     const steps: Step[] = [
       { text: 'Old Smokestack rolls off the screen and takes a seat in the Bijou.', run: () => undefined },
       { text: 'The organ remembers a new tune.', run: () => this.startMusic(this.shownFreed) },
@@ -557,6 +586,44 @@ export class BijouScene extends Phaser.Scene {
         sfx('click');
       },
     });
+  }
+
+  /** Miss Pirouette's ending: she climbs out on top of her box, and leaves the lid open. */
+  private pirouetteEnding(ch: (typeof Game.story.chapters)[number]): void {
+    const lo = Game.duels[ch.feature]?.lostObject;
+    const steps: Step[] = [
+      { text: 'The lid of the music box swings open... and Miss Pirouette steps out on top of it.', run: () => this.placeDancer() },
+      { text: 'For the first time in fifty years, somebody is watching her dance.' },
+      { text: 'The organ remembers a new tune.', run: () => this.startMusic(this.shownFreed) },
+      { text: "Tick's hands move forward. Seven seconds closer to midnight." },
+      { text: 'Outside, the snow melts. Spring is coming.' },
+      ...(lo ? [{ text: `Something was left in the music box, under the velvet: ${lo.name.toLowerCase()}. Tick takes it up to Elias' desk.` }] : []),
+      { text: `The marquee changes: COMING SOON... ${ch.comingSoon}`, run: () => this.finishEnding(ch.feature, ch.endCards) },
+    ];
+    this.shownFreed = this.save.freed.length;
+    this.say(steps);
+    const target = Math.min(59, this.shownFreed * Game.story.secondsPerBoss);
+    this.time.addEvent({
+      delay: 600,
+      repeat: Math.max(0, target - this.shownSeconds - 1),
+      startAt: 0,
+      callback: () => {
+        this.shownSeconds++;
+        sfx('click');
+      },
+    });
+  }
+
+  /** Miss Pirouette, tiny, on the lost and found box (freed: a friend now). */
+  private placeDancer(): void {
+    if (this.dancer || !Pirouette.available(this)) return;
+    const d = new Pirouette(this);
+    d.size = 0.13;
+    d.x = 342;
+    d.groundY = 1177;
+    d.setDepth(23);
+    this.dancer = d;
+    sfx('bell');
   }
 
   private finishEnding(feature: string, endCards: string[]): void {
@@ -708,6 +775,7 @@ export class BijouScene extends Phaser.Scene {
     const allDone = s.freed.length >= Game.story.chapters.length && s.flags.endingsSeen.includes(ch.feature);
     this.hudFrames.setText(
       allDone ? 'TO BE CONTINUED...'
+        : ch.entry === 'lostfound' ? '♪ THE LOST & FOUND'
         : s.flags.threaded.includes(ch.feature) ? 'NOW SHOWING!'
           : s.flags.spliced.includes(ch.feature) ? 'REEL READY'
             : `FRAMES  ${framesAvailable(s)} / ${ch.framesNeeded}`,
@@ -796,7 +864,7 @@ export class BijouScene extends Phaser.Scene {
     // the screen
     const lit = threaded && !s.freed.includes(ch.feature);
     g.fillStyle(lit ? 0xe8e1d0 : this.shownFreed > 0 ? 0xbdb6a8 : 0x3a3732, 1).fillRect(SCREEN.x, SCREEN.y, SCREEN.w, SCREEN.h);
-    this.screenText.setText(lit ? `OLD SMOKESTACK\nin\n"${Game.levels[ch.feature]?.title ?? ''}"` : this.shownFreed > 0 ? 'THE BIJOU\n\nintermission' : '');
+    this.screenText.setText(lit ? `${(Game.levelInfo(ch.feature)?.subtitle ?? '').toUpperCase()}\nin\n"${Game.levelInfo(ch.feature)?.title ?? ''}"` : this.shownFreed > 0 ? 'THE BIJOU\n\nintermission' : '');
     this.screenText.setScale(lit ? 1 + pulse * 0.03 : 1).setAlpha(lit ? 0.85 + Math.random() * 0.15 : 0.6);
 
     // marquee with chasing bulbs

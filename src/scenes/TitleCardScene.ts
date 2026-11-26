@@ -27,7 +27,7 @@ export class TitleCardScene extends Phaser.Scene {
   create(): void {
     const P = Game.platformLevels[this.levelId];
     if (P) return this.platformCard();
-    const L = Game.levels[this.levelId];
+    const L = Game.levels[this.levelId] ?? Game.duels[this.levelId];
     this.cameras.main.setBackgroundColor('#2a2824');
     this.rays = this.add.graphics();
     const frame = this.add.graphics();
@@ -58,7 +58,7 @@ export class TitleCardScene extends Phaser.Scene {
       this.tweens.add({ targets: t, scale: 1, duration: 700, ease: 'Back.Out' });
     }
 
-    addFilm(this, L.era);
+    addFilm(this, (L.era ?? 'bw1928') as Parameters<typeof addFilm>[1]);
     this.input2 = new Input(this, Game.controls);
     this.time.delayedCall(4200, () => this.go());
   }
@@ -67,7 +67,7 @@ export class TitleCardScene extends Phaser.Scene {
     if (this.done) return;
     this.done = true;
     this.cameras.main.fadeOut(300, 11, 11, 11);
-    const target = Game.platformLevels[this.levelId] ? 'Platform' : 'Chase';
+    const target = Game.platformLevels[this.levelId] ? 'Platform' : Game.duels[this.levelId] ? 'Duel' : 'Chase';
     this.time.delayedCall(320, () => this.scene.start(target, { levelId: this.levelId, cue: this.cue }));
   }
 

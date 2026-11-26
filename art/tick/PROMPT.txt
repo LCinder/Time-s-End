@@ -1,0 +1,11 @@
+Character parts sheet for a 2D game puppet, original cartoon character, authentic 1930s rubber hose animation style: crisp clean thick black ink outlines, flat grey tones, black and white only, no colour, no gradients, no watercolour, simple bold shapes with few details so it is easy to animate.
+
+The character is Tick, a small brave pocket watch. Draw these 6 parts separately on the same sheet, in this order (left to right, top to bottom), each one alone with lots of empty white space around it, nothing touching, all at the same scale:
+1. the body: a round pocket-watch case seen straight from the front, a thick polished metal rim around a big round light watch face that is completely blank and empty (no numbers, no hands, no eyes, no mouth), and nothing on top
+2. the winding crown with its round ring (bow), alone, seen from the front
+3. a white four-finger cartoon glove, open hand, fingers up, palm facing us, thumb on the right
+4. the same glove as a clenched fist, thumb on the right
+5. the same glove pointing up with the index finger, thumb on the right
+6. one big round black cartoon shoe seen from the side, toe pointing right
+
+Plain pure white background, no shadows, no text, no labels, no numbers.

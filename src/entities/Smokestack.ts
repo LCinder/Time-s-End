@@ -14,6 +14,7 @@ import { Acting, faceWarp } from '../rig/Acting';
 import { ACTS, ACT_FACE, SING_FACES, type ActName, type ActPose, type Gaze } from './SmokestackActs';
 import { NEUTRAL, drawFace, expression, glideFace, type FaceParams } from './FaceRig';
 import { INK, Ink, PAPER } from '../rig/Ink';
+import { pieceInfo } from '../fx/artTextures';
 
 export type ArmPose = 'idle' | 'point' | 'fist' | 'wave';
 
@@ -53,10 +54,13 @@ interface Puppet {
   gFront: Phaser.GameObjects.Graphics;
   rest: { v: Phaser.Geom.Mesh.Vertex; x: number; y: number }[];
   wheels: Phaser.GameObjects.Image[];
-  mustache: Phaser.GameObjects.Image;
-  hat: Phaser.GameObjects.Image;
-  gloveF: Phaser.GameObjects.Image;
-  gloveB: Phaser.GameObjects.Image;
+  /** Optional parts: a sheet may have no moustache, no hat, no gloves (then they are drawn by code). */
+  mustache: Phaser.GameObjects.Image | null;
+  hat: Phaser.GameObjects.Image | null;
+  gloveF: Phaser.GameObjects.Image | null;
+  gloveB: Phaser.GameObjects.Image | null;
+  /** hand-drawn things he holds out on the long reach (`npm run art` event pieces), if any */
+  props: Partial<Record<'ticket' | 'punchOpen' | 'punchClosed' | 'windKey', Phaser.GameObjects.Image>>;
 }
 
 interface Hand {
@@ -131,6 +135,8 @@ export class Smokestack {
   wheelAngle = 0;
   /** Extra forward offset (lunge) in px. */
   lunge = 0;
+  /** The peak beat of a charge that was called off (Tick stopped time): the charge just eases back. */
+  lungeCancelled: number | null = null;
   /** Charging telegraph 0..1 (shake + red eyes). */
   charge = 0;
   /** Screen position of the nose. */
@@ -177,7 +183,17 @@ export class Smokestack {
   private hatS = { y: 0, vy: 0, r: 0, vr: 0 };
   private gloveType = { front: '', back: '' };
   private glovePop = { front: 0, back: 0 };
+  /** the glove's turn, eased (a new pose never snaps it round in one frame) */
+  private gloveAng = { front: NaN, back: NaN };
   private lastWhole = -1;
+  /**
+   * The conductor's long reach (set every frame by song events, in screen coords): the
+   * front arm stretches out like a rubber hose to hold a ticket over Tick or to punch
+   * the track. Cleared by the event when it is done.
+   */
+  reach: { x: number; y: number; prop: 'ticket' | 'punch' | 'key'; holes?: boolean[]; closed?: boolean; turn?: number } | null = null;
+  /** An event can force a face for a while (e.g. 'gulp' while drinking). */
+  faceOverride: string | null = null;
   /** where the puppet looks: at Tick, into the camera (the player!), up at the sky... */
   gaze: Gaze = 'tick';
   private faceNow: FaceParams = { ...NEUTRAL };
@@ -188,18 +204,28 @@ export class Smokestack {
   private chim = { x: -170, base: -296 };
   private boilerBox = { x0: -620, x1: -30, yTop: -310, yBot: -100 };
 
-  constructor(private scene: Phaser.Scene) {
+  /**
+   * @param artKey which character's parts sheet to wear (public/art/<artKey>/): any parts sheet
+   *               made with `npm run art` gets the same puppet, acting and face.
+   */
+  constructor(private scene: Phaser.Scene, readonly artKey = 'smokestack') {
     this.gfx = scene.add.graphics();
     this.gfx.setDepth(40);
     this.ink = new Ink(this.gfx);
     this.ink.amp = 1.4;
-    this.art = Game.art.smokestack ?? null;
+    this.art = Game.art[artKey] ?? null;
     this.geo = this.art ? puppetGeometry(this.art) : null;
   }
 
   /** The puppet is the villain; the friendly Smokestack in the Bijou stays drawn by code. */
   get usesPuppet(): boolean {
     return this.geo !== null && this.villain;
+  }
+
+  /** Move the whole drawing in front of / behind the scenery (e.g. on a far track). */
+  setDepth(d: number): void {
+    this.gfx.setDepth(d);
+    this.puppet?.box.setDepth(d);
   }
 
   setVisible(v: boolean): void {
@@ -379,9 +405,11 @@ export class Smokestack {
     const s = this.scene;
     const A = a.anchors;
     const box = s.add.container(0, 0).setDepth(40);
+    const id = this.artKey;
+    const has = (part: string) => !!a.parts[part];
     const gBack = s.add.graphics();
-    const gloveB = s.add.image(0, 0, 'art:smokestack:gloveFist').setOrigin(0.5, 0.82);
-    const key = 'art:smokestack:body';
+    const gloveB = has('gloveFist') ? s.add.image(0, 0, `art:${id}:gloveFist`).setOrigin(0.5, 0.82) : null;
+    const key = `art:${id}:body`;
     const mesh = s.add.mesh(0, 0, key);
     Phaser.Geom.Mesh.GenerateGridVerts({ mesh, texture: key, widthSegments: 20, heightSegments: 12 });
     mesh.hideCCW = false;
@@ -393,21 +421,27 @@ export class Smokestack {
       const py = (0.5 - v.y) * H;
       return { v, x: (px - A.noseX) * g.k + NOSE_X, y: (py - A.ground) * g.k };
     });
-    const wheelR = a.parts.wheel.w / 2 - 12;
-    const wheels = g.wheels.map((w) => s.add.image(0, 0, 'art:smokestack:wheel').setScale((w.r * 1.05) / wheelR));
+    const wheelR = has('wheel') ? a.parts.wheel.w / 2 - 12 : 1;
+    const wheels = has('wheel') ? g.wheels.map((w) => s.add.image(0, 0, `art:${id}:wheel`).setScale((w.r * 1.0) / wheelR)) : [];
     const gUnder = s.add.graphics();
     const gMid = s.add.graphics();
-    const mustache = s.add.image(0, 0, 'art:smokestack:mustache').setOrigin(0.5, 0.22);
-    const hat = s.add.image(0, 0, 'art:smokestack:hat').setOrigin(0.5, 0.9);
-    hat.setScale((g.chimney.capW * 1.7) / a.parts.hat.w);
+    const mustache = has('mustache') ? s.add.image(0, 0, `art:${id}:mustache`).setOrigin(0.5, 0.22) : null;
+    const hat = has('hat') ? s.add.image(0, 0, `art:${id}:hat`).setOrigin(0.5, 0.9) : null;
+    hat?.setScale((g.chimney.capW * 1.7) / a.parts.hat.w);
     const gFront = s.add.graphics();
-    const gloveF = s.add.image(0, 0, 'art:smokestack:gloveOpen').setOrigin(0.5, 0.82);
-    box.add([gBack, gloveB, mesh, ...wheels, gUnder, gMid, mustache, hat, gFront, gloveF]);
+    const gloveF = has('gloveOpen') ? s.add.image(0, 0, `art:${id}:gloveOpen`).setOrigin(0.5, 0.82) : null;
+    // the ticket, the punch and the winding key, when they are hand-drawn: held in the front glove
+    const props: Puppet['props'] = {};
+    for (const n of ['ticket', 'punchOpen', 'punchClosed', 'windKey'] as const) {
+      if (s.textures.exists(`art:tex:${n}`)) props[n] = s.add.image(0, 0, `art:tex:${n}`).setVisible(false);
+    }
+    // all of them sit behind the glove: the fist closes over them
+    box.add([gBack, ...(gloveB ? [gloveB] : []), mesh, ...wheels, gUnder, gMid, ...(mustache ? [mustache] : []), ...(hat ? [hat] : []), ...Object.values(props), gFront, ...(gloveF ? [gloveF] : [])]);
     // the warp finds the smokestack and the boiler of this picture
     this.chim = { x: g.chimney.x, base: g.chimney.base };
     const f = g.face;
     this.boilerBox = { x0: f.x - f.ry * 6, x1: f.x - f.rx * 0.6, yTop: f.y - f.ry * 1.1, yBot: f.y + f.ry * 1.1 };
-    return { box, gBack, gUnder, gMid, gFront, rest, wheels, mustache, hat, gloveF, gloveB };
+    return { box, gBack, gUnder, gMid, gFront, rest, wheels, mustache, hat, gloveF, gloveB, props };
   }
 
   /** The puppet, redrawn every frame (60 fps) so every movement is continuous. */
@@ -432,7 +466,7 @@ export class Smokestack {
     // wheels spin, the connecting rod follows the crank pins
     g.wheels.forEach((w, i) => {
       const p = warp(w.x, w.y);
-      P.wheels[i].setPosition(p.x, p.y).setRotation(this.wheelAngle * w.spin);
+      P.wheels[i]?.setPosition(p.x, p.y).setRotation(this.wheelAngle * w.spin);
     });
     const k = this.ink;
     const prevG = k.g;
@@ -444,7 +478,7 @@ export class Smokestack {
     this.placeGlove(P.gloveB, this.paintArm(false), 'back');
     k.g = P.gMid;
     const big = g.wheels.slice(0, 3);
-    if (big.length >= 2) {
+    if (big.length >= 2 && P.wheels.length) {
       const pins = big.map((w) => ({ x: w.x + Math.cos(this.wheelAngle) * w.r * 0.48, y: w.y + Math.sin(this.wheelAngle) * w.r * 0.48 }));
       const a0 = pins[0];
       const a1 = pins[pins.length - 1];
@@ -455,6 +489,7 @@ export class Smokestack {
     this.paintPuppetFace(P);
     this.updateHat(P, warp);
     k.g = P.gFront;
+    for (const img of Object.values(P.props)) img.setVisible(false);
     this.placeGlove(P.gloveF, this.paintArm(true), 'front');
     k.g = prevG;
     k.amp = 1.4;
@@ -463,6 +498,7 @@ export class Smokestack {
 
   /** Where to look right now (an act can override the director's choice). */
   private currentGaze(): Gaze {
+    if (this.reach) return 'tick';
     if (this.arm === 'point') return 'up';
     if (this.perf?.name === 'timetable' && this.poseW > 0.3 && (this.time - this.perf.start) / this.perf.dur < 0.62) return 'paper';
     if (this.perf && this.poseW > 0.3) return ACT_FACE[this.perf.name].gaze ?? this.gaze;
@@ -477,7 +513,9 @@ export class Smokestack {
     this.wasSinging = singing;
     let name = 'sneer';
     if (this.fallY > 20) name = this.arm === 'wave' ? 'innocent' : 'panic';
+    else if (this.faceOverride) name = this.faceOverride;
     else if (laughing) name = 'cackle';
+    else if (this.reach) name = this.reach.prop === 'ticket' ? 'smirk' : 'glee';
     else if (this.arm === 'point') name = 'glee';
     else if (this.arm === 'fist' || this.charge > 0.3) name = 'rage';
     else if (this.perf && this.poseW > 0.3) {
@@ -587,9 +625,9 @@ export class Smokestack {
     const m = toFace(-2, 4 - p.smile * 5 - p.open * 6 + wig);
     const width = 122 * fs * (0.55 + 0.45 * sq) * (1 + p.smile * 0.06);
     const flap = 1 + this.mouth * 0.06 * Math.sin(time * 18) + (this.shouting ? 0.1 : 0);
-    P.mustache.setPosition(m.x, m.y);
-    P.mustache.setRotation(this.act.tilt * 1.2 - p.skew * 0.09);
-    P.mustache.setScale((width / P.mustache.width) * flap, (width / P.mustache.width) * (2 - flap));
+    P.mustache?.setPosition(m.x, m.y);
+    P.mustache?.setRotation(this.act.tilt * 1.2 - p.skew * 0.09);
+    P.mustache?.setScale((width / P.mustache.width) * flap, (width / P.mustache.width) * (2 - flap));
     k.warp = bodyWarp;
   }
 
@@ -611,24 +649,40 @@ export class Smokestack {
     H.vr += ((tiltTarget - H.r) * 160 - H.vr * 9) * dt;
     H.r += H.vr * dt;
     const top = warp(g.chimney.x, g.chimney.top);
-    P.hat.setPosition(top.x, top.y + H.y).setRotation(H.r);
+    P.hat?.setPosition(top.x, top.y + H.y).setRotation(H.r);
   }
 
   /** Put the glove picture at the end of the hose arm, pointing along it. */
-  private placeGlove(img: Phaser.GameObjects.Image, h: Hand, side: 'front' | 'back'): void {
+  private placeGlove(img: Phaser.GameObjects.Image | null, h: Hand, side: 'front' | 'back'): void {
+    if (!img) {
+      if (!h.hidden) this.ink.glove(h.x, h.y, 22, h.angle, h.fist);
+      return;
+    }
     img.setVisible(!h.hidden);
     if (h.hidden) return;
     const type = h.finger ? 'glovePoint' : h.fist ? 'gloveFist' : 'gloveOpen';
     if (type !== this.gloveType[side]) {
       this.gloveType[side] = type;
-      img.setTexture(`art:smokestack:${type}`);
+      img.setTexture(this.scene.textures.exists(`art:${this.artKey}:${type}`) ? `art:${this.artKey}:${type}` : `art:${this.artKey}:gloveOpen`);
       this.glovePop[side] = 1;
     }
     this.glovePop[side] = Math.max(0, this.glovePop[side] - this.dt * 6);
     const target = (type === 'glovePoint' ? 84 : type === 'gloveFist' ? 54 : 66) * (side === 'back' ? 0.9 : 1);
     const pop = 1 + Math.sin(this.glovePop[side] * Math.PI) * 0.18;
     const p = this.ink.warp ? this.ink.warp(h.x, h.y) : h;
-    img.setPosition(p.x, p.y).setRotation(h.angle + Math.PI / 2).setScale((target / img.height) * pop);
+    // the glove turns towards where the forearm points, but eased: when a gesture starts the
+    // elbow can jump, and the glove would snap round 80° in one frame (it looked inside out)
+    let ang = this.gloveAng[side];
+    if (!Number.isFinite(ang) || h.hidden) ang = h.angle;
+    ang += Phaser.Math.Angle.Wrap(h.angle - ang) * Math.min(1, this.dt * 12);
+    this.gloveAng[side] = ang;
+    // we see the train's left side: the near hand is a left hand, palm towards us (the gloves
+    // are drawn fingers up with the thumb on the right), and it only ever turns, never mirrors
+    const s = (target / img.height) * pop;
+    img.setFlipX(false).setPosition(p.x, p.y).setRotation(ang + Math.PI / 2).setScale(s);
+    // whatever the hand holds goes in the fist, wherever the eased glove is now
+    const props = this.puppet?.props;
+    if (side === 'front' && this.reach && props) this.placeHeld(props, p, ang, target * pop);
   }
 
   // ───────────────────────── drawing ─────────────────────────
@@ -1048,6 +1102,136 @@ export class Smokestack {
     }
   }
 
+  /** What the long arm holds: the ticket being punched, or the giant ticket punch. */
+  private paintReachProp(hx: number, hy: number, angle: number): void {
+    const k = this.ink;
+    const R = this.reach!;
+    const art = this.usesPuppet ? this.puppet?.props : undefined;
+    if (art && this.hasArtProp(art)) return; // placed in the fist by placeGlove
+    if (R.prop === 'ticket') {
+      // the ticket hangs from the glove's fingertips, its holes punched by Tick's head
+      const holes = R.holes ?? [];
+      const w = 40 + holes.length * 34;
+      const h = 58;
+      const x0 = hx - w * 0.5;
+      const y0 = hy + 14;
+      k.poly([{ x: x0, y: y0 }, { x: x0 + w, y: y0 - 4 }, { x: x0 + w + 2, y: y0 + h - 4 }, { x: x0 + 2, y: y0 + h }], 0xe9dfc8, 4);
+      k.poly([{ x: x0 + 6, y: y0 + 6 }, { x: x0 + w - 6, y: y0 + 3 }, { x: x0 + w - 6, y: y0 + 14 }, { x: x0 + 6, y: y0 + 17 }], 0x3a3630, 0);
+      holes.forEach((punched, i) => {
+        const cx = x0 + 30 + i * 34;
+        const cy = y0 + 36;
+        if (punched) k.circle(cx, cy, 9, INK, 0);
+        else k.circle(cx, cy, 9, null, 2);
+      });
+      return;
+    }
+    if (R.prop === 'key') {
+      // a giant winding key, turning backwards in the glove
+      const a0 = R.turn ?? 0;
+      const c = Math.cos(a0);
+      const sn = Math.sin(a0);
+      const P = (x: number, y: number) => ({ x: hx + x * c - y * sn, y: hy + 30 + x * sn + y * c });
+      const shaftA = P(0, -10);
+      const shaftB = P(0, 60);
+      k.line(shaftA.x, shaftA.y, shaftB.x, shaftB.y, 14, INK);
+      k.line(shaftA.x, shaftA.y, shaftB.x, shaftB.y, 8, 0xc9a24a);
+      for (const side of [-1, 1]) {
+        const q = P(side * 26, -22);
+        k.ellipse(q.x, q.y, 24, 16, 0xc9a24a, 4, a0);
+        const h = P(side * 26, -22);
+        k.ellipse(h.x, h.y, 9, 6, 0x5a4a2a, 0, a0);
+      }
+      return;
+    }
+    // the punch: two long handles in the fist, round jaws below biting down
+    const open = R.closed ? 0 : 1;
+    const c = Math.cos(angle - Math.PI / 2);
+    const sn = Math.sin(angle - Math.PI / 2);
+    const P = (x: number, y: number) => ({ x: hx + x * c - y * sn, y: hy + x * sn + y * c });
+    const a = P(-14 - open * 10, 8);
+    const b = P(14 + open * 10, 8);
+    const j1 = P(-16, 70);
+    const j2 = P(16, 70);
+    k.line(a.x, a.y, j1.x, j1.y, 14, INK);
+    k.line(b.x, b.y, j2.x, j2.y, 14, INK);
+    k.line(a.x, a.y, j1.x, j1.y, 8, 0x5a5a5a);
+    k.line(b.x, b.y, j2.x, j2.y, 8, 0x5a5a5a);
+    const jaw = P(0, 78);
+    k.rrect(jaw.x - 26, jaw.y - 10, 52, 22, 6, 0x5a5a5a, 4);
+    k.circle(jaw.x, jaw.y, 8, R.closed ? INK : 0x2a2a2a, 3);
+  }
+
+  /** Is there a hand-drawn picture of what the long reach holds now? */
+  private hasArtProp(art: Puppet['props']): boolean {
+    const R = this.reach!;
+    if (R.prop === 'ticket') return !!art.ticket;
+    if (R.prop === 'key') return !!art.windKey;
+    return !!art.punchOpen && !!art.punchClosed;
+  }
+
+  /**
+   * The hand-drawn ticket / punch / key gripped in the fist. `p` is where the glove is (its
+   * wrist), `ang` the way its fingers point, `gh` its height: the middle of the fist is a third
+   * of the way up the glove. Everything here is in the puppet's own coordinates, already warped.
+   */
+  private placeHeld(art: Puppet['props'], p: { x: number; y: number }, ang: number, gh: number): void {
+    const k = this.ink;
+    const R = this.reach!;
+    const fx = p.x + Math.cos(ang) * gh * 0.34;
+    const fy = p.y + Math.sin(ang) * gh * 0.34;
+    if (R.prop === 'ticket' && art.ticket) {
+      // the fist pinches the top edge; the ticket hangs below it, swinging a little
+      const holes = R.holes ?? [];
+      const w = 40 + holes.length * 34;
+      const img = art.ticket;
+      const s = w / img.width;
+      const h = img.height * s;
+      const rot = Math.sin(this.time * 2.6) * 0.05;
+      img.setVisible(true).setOrigin(0.5, 0.08).setPosition(fx, fy).setScale(s).setRotation(rot);
+      const warp = k.warp;
+      k.warp = null;
+      holes.forEach((punched, i) => {
+        const lx = -w / 2 + (w * (i + 0.5)) / Math.max(1, holes.length);
+        const ly = h * 0.46;
+        const cx = fx + lx * Math.cos(rot) - ly * Math.sin(rot);
+        const cy = fy + lx * Math.sin(rot) + ly * Math.cos(rot);
+        if (punched) k.circle(cx, cy, 9, INK, 0);
+        else k.circle(cx, cy, 9, null, 2);
+      });
+      k.warp = warp;
+      return;
+    }
+    if (R.prop === 'key' && art.windKey) {
+      // the bow gripped in the fist (its loops stick out either side), the shaft pointing down
+      // at Tick's crown; turning, the bow is seen flat, then edge-on
+      const img = art.windKey;
+      const info = pieceInfo('windKey');
+      const [px, py] = info?.anchors.pivot ?? [img.width * 0.2, img.height / 2];
+      const [tx] = info?.anchors.tip ?? [img.width, 0];
+      const s = 100 / (tx - px);
+      const turn = R.turn ?? 0;
+      img.setVisible(true).setOrigin(px / img.width, py / img.height).setPosition(fx, fy);
+      img.setRotation(Math.PI / 2).setScale(s, s * Math.max(0.12, Math.abs(Math.cos(turn))));
+      return;
+    }
+    if (R.prop === 'punch' && art.punchOpen && art.punchClosed) {
+      // the handles go through the fist (their ends stick out behind it), the jaws point down
+      // at the rails they are about to bite
+      const name = R.closed ? 'punchClosed' : 'punchOpen';
+      const img = art[name]!;
+      art[R.closed ? 'punchOpen' : 'punchClosed']!.setVisible(false);
+      const info = pieceInfo(name);
+      const [gx, gy] = info?.anchors.grip ?? [img.width * 0.92, img.height / 2];
+      const [jx, jy] = info?.anchors.jaw ?? [0, img.height / 2];
+      const hx = jx + (gx - jx) * 0.74;
+      const hy = jy + (gy - jy) * 0.74;
+      const s = 110 / Math.hypot(gx - jx, gy - jy);
+      const drawn = Math.atan2(jy - gy, jx - gx); // the way the jaws point in the picture
+      const aim = Math.PI / 2 - 0.25; // down, a touch forwards
+      img.setVisible(true).setOrigin(hx / img.width, hy / img.height).setPosition(fx, fy).setScale(s).setRotation(aim - drawn);
+    }
+  }
+
   private paintArm(front: boolean): Hand {
     const k = this.ink;
     const time = this.time;
@@ -1161,14 +1345,22 @@ export class Smokestack {
         const show = hx > f.x + f.rx * 0.3 && !charging;
         if (!show) return { x: hx, y: hy, angle: 0, fist, finger: false, hidden: true };
       }
-      const reach = f.ry * 3.3;
-      const d = Math.hypot(hx - shX, hy - shY);
-      if (d > reach) {
-        hx = shX + ((hx - shX) * reach) / d;
-        hy = shY + ((hy - shY) * reach) / d;
+      const long = front && this.reach;
+      if (long) {
+        // the long reach: straight to the event's spot (no arm-length limit: it's rubber!)
+        hx = (this.reach!.x - this.screenX) / this.size;
+        hy = (this.reach!.y - this.groundY - this.fallY) / this.size;
+        fist = true; // gripping the ticket's edge, the punch's handles or the key's bow
+      } else {
+        const reach = f.ry * 3.3;
+        const d = Math.hypot(hx - shX, hy - shY);
+        if (d > reach) {
+          hx = shX + ((hx - shX) * reach) / d;
+          hy = shY + ((hy - shY) * reach) / d;
+        }
+        hy = Math.max(hy, -(this.groundY - 75) / this.size);
+        hx = Math.min(hx, (1240 - this.screenX) / this.size);
       }
-      hy = Math.max(hy, -(this.groundY - 75) / this.size);
-      hx = Math.min(hx, (1240 - this.screenX) / this.size);
       const H = front ? this.hands.front : this.hands.back;
       if (!H.init) Object.assign(H, { x: hx, y: hy, init: true });
       const dt = Math.min(this.dt, 1 / 30);
@@ -1220,14 +1412,17 @@ export class Smokestack {
     k.hose(shX, shY, cx, cy, hx, hy, geo ? (front ? 17 : 15) : front ? 14 : 12, front ? INK : 0x262626);
     const angle = Math.atan2(hy - cy, hx - cx);
     k.g = armG;
-    const hand: Hand = { x: hx, y: hy, angle, fist, finger: finger || fingers > 0 || (front && this.arm === 'point') };
+    // holding something out on the long reach, the hand is a fist round it (never pointing)
+    const holding = front && !!this.reach;
+    const hand: Hand = { x: hx, y: hy, angle, fist: fist || holding, finger: !holding && (finger || fingers > 0 || (front && this.arm === 'point')) };
     if (!geo) k.glove(hx, hy, front ? 20 : 17, angle, fist);
     // raised fingers: one to point, shush or wag; several to count
     for (let f = 0; !geo && f < Math.max(finger ? 1 : 0, fingers); f++) {
       const a = -Math.PI / 2 + (f - (Math.max(1, fingers) - 1) / 2) * 0.32;
       k.hose(hx, hy - 6, hx + Math.cos(a) * 14, hy - 6 + Math.sin(a) * 14, hx + Math.cos(a) * 28, hy - 6 + Math.sin(a) * 28, 7, PAPER, 2);
     }
-    if (front && this.poseW > 0.3 && geo) {
+    if (front && this.reach) this.paintReachProp(hx, hy, angle);
+    if (front && this.poseW > 0.3 && geo && !this.reach) {
       if (this.pose.hanky) {
         // a hanky hanging from the glove, swaying
         const sw = Math.sin(time * 5) * 5;
@@ -1235,7 +1430,7 @@ export class Smokestack {
         k.poly([{ x: hx - r * 0.12, y: hy - r * 0.08 }, { x: hx + r * 0.32, y: hy }, { x: hx + r * 0.2 + sw, y: hy + r * 0.55 }, { x: hx - r * 0.18 + sw * 0.7, y: hy + r * 0.4 }], PAPER, 3);
       }
       if (this.pose.timetable) this.paintTimetable(hx, hy, geo.face.ry);
-    } else if (front && this.poseW > 0.3) {
+    } else if (front && this.poseW > 0.3 && !geo) {
       if (this.pose.hanky) {
         // a hanky for crocodile tears
         k.poly([{ x: hx - 8, y: hy - 6 }, { x: hx + 26, y: hy + 4 }, { x: hx + 12, y: hy + 44 }, { x: hx - 14, y: hy + 30 }], PAPER, 3);

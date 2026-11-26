@@ -1,0 +1,734 @@
+{
+  "textures": {
+    "skyline": {
+      "file": "skyline.png",
+      "w": 806,
+      "h": 246,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "pinehills": {
+      "file": "pinehills.png",
+      "w": 708,
+      "h": 303,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "canyonfar": {
+      "file": "canyonfar.png",
+      "w": 718,
+      "h": 274,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "cliffs": {
+      "file": "cliffs.png",
+      "w": 813,
+      "h": 356,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "deadtree": {
+      "file": "deadtree.png",
+      "w": 233,
+      "h": 338,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "crowtree": {
+      "file": "crowtree.png",
+      "w": 242,
+      "h": 326,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "pole": {
+      "file": "pole.png",
+      "w": 197,
+      "h": 317,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "polecrow": {
+      "file": "polecrow.png",
+      "w": 166,
+      "h": 338,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "scarecrow": {
+      "file": "scarecrow.png",
+      "w": 219,
+      "h": 304,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "thorn": {
+      "file": "thorn.png",
+      "w": 279,
+      "h": 176,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "fence": {
+      "file": "fence.png",
+      "w": 269,
+      "h": 185,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "rock": {
+      "file": "rock.png",
+      "w": 204,
+      "h": 139,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "hills": {
+      "file": "hills.png",
+      "w": 848,
+      "h": 200,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "wisp": {
+      "file": "wisp.png",
+      "w": 378,
+      "h": 106,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "wisp2": {
+      "file": "wisp2.png",
+      "w": 262,
+      "h": 109,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "sun": {
+      "file": "sun.png",
+      "w": 242,
+      "h": 234,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "moon": {
+      "file": "moon.png",
+      "w": 199,
+      "h": 211,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "twinkle": {
+      "file": "twinkle.png",
+      "w": 123,
+      "h": 134,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "farhills": {
+      "file": "farhills.png",
+      "w": 817,
+      "h": 103,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "mountains": {
+      "file": "mountains.png",
+      "w": 923,
+      "h": 271,
+      "boss": "smokestack",
+      "strip": true
+    },
+    "house": {
+      "file": "house.png",
+      "w": 273,
+      "h": 297,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "house2": {
+      "file": "house2.png",
+      "w": 258,
+      "h": 292,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "watertower": {
+      "file": "watertower.png",
+      "w": 258,
+      "h": 299,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "spout": [
+          240,
+          163
+        ]
+      }
+    },
+    "semaphore": {
+      "file": "semaphore.png",
+      "w": 143,
+      "h": 286,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "lamppost": {
+      "file": "lamppost.png",
+      "w": 109,
+      "h": 291,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "stationclock": {
+      "file": "stationclock.png",
+      "w": 133,
+      "h": 287,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "grandclock": {
+      "file": "grandclock.png",
+      "w": 213,
+      "h": 335,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "grandclock2": {
+      "file": "grandclock2.png",
+      "w": 192,
+      "h": 337,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "cuckootree": {
+      "file": "cuckootree.png",
+      "w": 215,
+      "h": 337,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "door": [
+          60,
+          97
+        ]
+      }
+    },
+    "handcross": {
+      "file": "handcross.png",
+      "w": 189,
+      "h": 319,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "clockstone": {
+      "file": "clockstone.png",
+      "w": 239,
+      "h": 190,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "gravefence": {
+      "file": "gravefence.png",
+      "w": 256,
+      "h": 198,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "watchpile": {
+      "file": "watchpile.png",
+      "w": 343,
+      "h": 185,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "pine": {
+      "file": "pine.png",
+      "w": 259,
+      "h": 523,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "pine2": {
+      "file": "pine2.png",
+      "w": 287,
+      "h": 413,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "owltree": {
+      "file": "owltree.png",
+      "w": 286,
+      "h": 527,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "eyesbush": {
+      "file": "eyesbush.png",
+      "w": 256,
+      "h": 226,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "crag": {
+      "file": "crag.png",
+      "w": 238,
+      "h": 467,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "crag2": {
+      "file": "crag2.png",
+      "w": 315,
+      "h": 335,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "vulture": {
+      "file": "vulture.png",
+      "w": 286,
+      "h": 397,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "portal": {
+      "file": "portal.png",
+      "w": 306,
+      "h": 331,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "tunnelwall": {
+      "file": "tunnelwall.png",
+      "w": 106,
+      "h": 183,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "beam": {
+      "file": "beam.png",
+      "w": 278,
+      "h": 291,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "lantern": {
+      "file": "lantern.png",
+      "w": 113,
+      "h": 322,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "boxcar": {
+      "file": "boxcar.png",
+      "w": 333,
+      "h": 220,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "anvil": {
+      "file": "anvil.png",
+      "w": 258,
+      "h": 143,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "piano": {
+      "file": "piano.png",
+      "w": 275,
+      "h": 258,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "trunk": {
+      "file": "trunk.png",
+      "w": 299,
+      "h": 186,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "coal": {
+      "file": "coal.png",
+      "w": 181,
+      "h": 233,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "sign": {
+      "file": "sign.png",
+      "w": 218,
+      "h": 223,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "ticket": {
+      "file": "ticket.png",
+      "w": 184,
+      "h": 96,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "punchOpen": {
+      "file": "punchOpen.png",
+      "w": 263,
+      "h": 182,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "grip": [
+          245,
+          95
+        ],
+        "jaw": [
+          20,
+          80
+        ]
+      }
+    },
+    "punchClosed": {
+      "file": "punchClosed.png",
+      "w": 452,
+      "h": 195,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "grip": [
+          430,
+          100
+        ],
+        "jaw": [
+          10,
+          95
+        ]
+      }
+    },
+    "crossingPost": {
+      "file": "crossingPost.png",
+      "w": 127,
+      "h": 280,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "crossingArm": {
+      "file": "crossingArm.png",
+      "w": 299,
+      "h": 74,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          18,
+          24
+        ]
+      }
+    },
+    "cuckooBird": {
+      "file": "cuckooBird.png",
+      "w": 205,
+      "h": 172,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "leverBase": {
+      "file": "leverBase.png",
+      "w": 250,
+      "h": 165,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          100,
+          42
+        ]
+      }
+    },
+    "leverHandle": {
+      "file": "leverHandle.png",
+      "w": 171,
+      "h": 260,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          22,
+          230
+        ],
+        "tip": [
+          148,
+          30
+        ]
+      }
+    },
+    "windKey": {
+      "file": "windKey.png",
+      "w": 330,
+      "h": 234,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          62,
+          117
+        ],
+        "tip": [
+          330,
+          117
+        ]
+      }
+    },
+    "ghostWatch": {
+      "file": "ghostWatch.png",
+      "w": 162,
+      "h": 208,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "grandfatherCase": {
+      "file": "grandfatherCase.png",
+      "w": 160,
+      "h": 307,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "face": [
+          80,
+          90
+        ],
+        "doorTop": [
+          52,
+          158
+        ],
+        "doorBottom": [
+          108,
+          240
+        ]
+      }
+    },
+    "pendulum": {
+      "file": "pendulum.png",
+      "w": 73,
+      "h": 241,
+      "boss": "smokestack",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          36,
+          13
+        ],
+        "bob": [
+          36,
+          208
+        ]
+      }
+    },
+    "rocktile": {
+      "file": "rocktile.png",
+      "w": 565,
+      "h": 634,
+      "boss": "smokestack",
+      "strip": false
+    },
+    "tickBody": {
+      "file": "tickBody.png",
+      "w": 279,
+      "h": 301,
+      "boss": "tick",
+      "strip": false
+    },
+    "tickCrown": {
+      "file": "tickCrown.png",
+      "w": 163,
+      "h": 161,
+      "boss": "tick",
+      "strip": false
+    },
+    "tickGloveOpen": {
+      "file": "tickGloveOpen.png",
+      "w": 267,
+      "h": 264,
+      "boss": "tick",
+      "strip": false
+    },
+    "tickGloveFist": {
+      "file": "tickGloveFist.png",
+      "w": 190,
+      "h": 191,
+      "boss": "tick",
+      "strip": false
+    },
+    "tickGlovePoint": {
+      "file": "tickGlovePoint.png",
+      "w": 176,
+      "h": 248,
+      "boss": "tick",
+      "strip": false
+    },
+    "tickShoe": {
+      "file": "tickShoe.png",
+      "w": 264,
+      "h": 154,
+      "boss": "tick",
+      "strip": false
+    },
+    "pirBody": {
+      "file": "pirBody.png",
+      "w": 329,
+      "h": 455,
+      "boss": "pirouette",
+      "strip": false,
+      "anchors": {
+        "waist": [
+          165,
+          340
+        ],
+        "head": [
+          168,
+          135
+        ],
+        "face": [
+          192,
+          150
+        ],
+        "shoulderL": [
+          100,
+          272
+        ],
+        "shoulderR": [
+          230,
+          272
+        ],
+        "hipL": [
+          142,
+          430
+        ],
+        "hipR": [
+          188,
+          430
+        ],
+        "bun": [
+          140,
+          52
+        ]
+      }
+    },
+    "pirTiara": {
+      "file": "pirTiara.png",
+      "w": 141,
+      "h": 104,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "pirKey": {
+      "file": "pirKey.png",
+      "w": 126,
+      "h": 105,
+      "boss": "pirouette",
+      "strip": false,
+      "anchors": {
+        "pivot": [
+          112,
+          75
+        ],
+        "handle": [
+          45,
+          25
+        ]
+      }
+    },
+    "pirGloveOpen": {
+      "file": "pirGloveOpen.png",
+      "w": 180,
+      "h": 212,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "pirGloveFist": {
+      "file": "pirGloveFist.png",
+      "w": 133,
+      "h": 137,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "pirGlovePoint": {
+      "file": "pirGlovePoint.png",
+      "w": 150,
+      "h": 205,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "pirShoe": {
+      "file": "pirShoe.png",
+      "w": 230,
+      "h": 163,
+      "boss": "pirouette",
+      "strip": false,
+      "anchors": {
+        "ankle": [
+          52,
+          82
+        ],
+        "toe": [
+          218,
+          122
+        ]
+      }
+    },
+    "musicboxBack": {
+      "file": "musicboxBack.png",
+      "w": 1024,
+      "h": 575,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbTurntable": {
+      "file": "mbTurntable.png",
+      "w": 257,
+      "h": 124,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbCylinder": {
+      "file": "mbCylinder.png",
+      "w": 241,
+      "h": 78,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbComb": {
+      "file": "mbComb.png",
+      "w": 186,
+      "h": 81,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbCushion": {
+      "file": "mbCushion.png",
+      "w": 218,
+      "h": 128,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbNote": {
+      "file": "mbNote.png",
+      "w": 171,
+      "h": 218,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbMoth": {
+      "file": "mbMoth.png",
+      "w": 228,
+      "h": 151,
+      "boss": "pirouette",
+      "strip": false
+    },
+    "mbBouquet": {
+      "file": "mbBouquet.png",
+      "w": 197,
+      "h": 230,
+      "boss": "pirouette",
+      "strip": false
+    }
+  }
+}

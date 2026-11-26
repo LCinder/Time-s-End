@@ -1,0 +1,1801 @@
+{
+  "id": "pirouette",
+  "title": "THE LAST PIROUETTE",
+  "subtitle": "Miss Pirouette",
+  "boss": "pirouette",
+  "type": "duel",
+  "era": "bw1928",
+  "lostObject": {
+    "id": "rose-photo",
+    "name": "A faded photograph",
+    "text": "A young usherette dancing alone in the empty aisle, laughing. On the back, in Elias' hand: \"Rose, 1929. Same time tomorrow?\""
+  },
+  "comment": "A duel inside the music box, and a real boss: three hits a life, three lives (losing one winds back the turn of the key; losing the last starts the duel over). Each phase is a turn of her key; its sections are the stanzas of her song. A stanza's first part (beats 0 \u2026 loopFrom) is SUNG ONCE, with the attacks its words announce; the rest is its instrumental REFRAIN, which repeats (mirrored every other time) until her spring is down to the stanza's gate (`until`, default evenly spaced), and then the song goes on. So the words always match what happens, however long the fight takes: a quick player hears the song straight through, a slow one hears refrains. Golden notes (gold) sent back give a hit back. Beats count from the start of each stanza. PROVISIONAL: the game plays a music box waltz until the Suno song arrives (see MAIN.md: each stanza will be a sung segment + a loopable instrumental segment of the file).",
+  "phases": [
+    {
+      "name": "FIRST TURN OF THE KEY",
+      "subtitle": "A music box waltz",
+      "bpm": 93.9631,
+      "melody": "waltz",
+      "damage": {
+        "perfect": 0.048,
+        "good": 0.032
+      },
+      "sections": [
+        {
+          "name": "Ping, ping, ping",
+          "beats": 33.0,
+          "loopFrom": 21.0,
+          "events": [
+            {
+              "type": "sing",
+              "beat": 8.5,
+              "lengthBeats": 3
+            },
+            {
+              "type": "note",
+              "beat": 13.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 15.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 18.0,
+              "from": "comb"
+            },
+            {
+              "type": "twirl",
+              "beat": 21.0
+            },
+            {
+              "type": "note",
+              "beat": 21.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 24.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 25.5,
+              "from": "comb"
+            },
+            {
+              "type": "twirl",
+              "beat": 27.0
+            },
+            {
+              "type": "note",
+              "beat": 28.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 30.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 31.5,
+              "from": "comb"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 10.53,
+              "text": "Hear my music box go ping, ping, ping, every ^NOTE is meant for you,",
+              "at": [
+                -0.0,
+                0.73,
+                1.1,
+                1.95,
+                2.38,
+                2.6,
+                2.83,
+                3.22,
+                3.99,
+                4.29,
+                4.62,
+                5.08,
+                5.35,
+                5.84
+              ]
+            },
+            {
+              "beat": 17.39,
+              "text": "Send it back if you keep time, little clock, and I'll dance right through!",
+              "at": [
+                0.0,
+                0.18,
+                0.45,
+                0.88,
+                1.21,
+                1.43,
+                1.75,
+                2.42,
+                2.86,
+                3.44,
+                3.56,
+                3.97,
+                4.25,
+                4.75
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              22.6801,
+              43.8161
+            ],
+            "loop": [
+              37.0881,
+              44.7681
+            ]
+          }
+        },
+        {
+          "name": "Watch me twirl!",
+          "beats": 25.5,
+          "loopFrom": 13.5,
+          "events": [
+            {
+              "type": "move",
+              "beat": 1.0,
+              "to": "left"
+            },
+            {
+              "type": "twirl",
+              "beat": 3.0
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "mirror"
+            },
+            {
+              "type": "dash",
+              "beat": 10.5,
+              "to": "right"
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "hand",
+              "gold": true
+            },
+            {
+              "type": "note",
+              "beat": 15.0,
+              "from": "hand"
+            },
+            {
+              "type": "bourree",
+              "beat": 16.5,
+              "count": 4,
+              "comment": "she hunts Tick down, a hop a beat: jump over her"
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 18.0,
+              "from": "hand"
+            },
+            {
+              "type": "twirl",
+              "beat": 22.5
+            },
+            {
+              "type": "note",
+              "beat": 24.0,
+              "from": "comb"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 1.42,
+              "text": "Watch me ^TWIRL! And mind your feet, my tulle is sharp, my turn is neat!",
+              "at": [
+                0.0,
+                0.77,
+                1.22,
+                2.01,
+                2.43,
+                2.68,
+                2.96,
+                3.56,
+                3.82,
+                4.08,
+                4.28,
+                5.32,
+                5.44,
+                5.72,
+                5.94
+              ]
+            },
+            {
+              "beat": 8.26,
+              "text": "Round I go on silver toes, the floor is mine from head to feet!",
+              "at": [
+                0.0,
+                0.34,
+                0.66,
+                1.03,
+                1.43,
+                2.02,
+                2.92,
+                3.04,
+                3.36,
+                3.61,
+                4.08,
+                4.39,
+                4.7,
+                5.07
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              43.8161,
+              60.1397
+            ],
+            "loop": [
+              52.4887,
+              60.1397
+            ]
+          }
+        },
+        {
+          "name": "Mirror, mirror on the lid",
+          "beats": 32.0,
+          "loopFrom": 20.0,
+          "events": [
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "hand"
+            },
+            {
+              "type": "cushions",
+              "beat": 8.0,
+              "up": [
+                1,
+                1
+              ]
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "comb",
+              "high": true
+            },
+            {
+              "type": "cushions",
+              "beat": 20.0,
+              "up": [
+                1,
+                1
+              ],
+              "comment": "the refrain raises them again on every pass"
+            },
+            {
+              "type": "note",
+              "beat": 21.0,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 22.5,
+              "from": "comb"
+            },
+            {
+              "type": "sweep",
+              "beat": 22.5,
+              "lengthBeats": 3,
+              "comment": "up on a cushion, and keep sending notes back up there"
+            },
+            {
+              "type": "note",
+              "beat": 24.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 25.5,
+              "from": "comb"
+            },
+            {
+              "type": "cushions",
+              "beat": 26.0,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "pins",
+              "beat": 27.0,
+              "dir": -1
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.76,
+              "text": "^MIRROR, mirror on the lid, who's the fairest one of all?",
+              "at": [
+                -0.0,
+                2.28,
+                2.5,
+                3.24,
+                3.71,
+                5.49,
+                6.1,
+                6.66,
+                7.99,
+                9.05,
+                9.64
+              ]
+            },
+            {
+              "beat": 12.25,
+              "text": "She keeps dancing when I do, she's the only friend I've got at all.",
+              "at": [
+                -0.0,
+                0.3,
+                0.93,
+                2.27,
+                3.55,
+                4.08,
+                5.98,
+                6.77,
+                7.16,
+                7.95,
+                8.6,
+                9.37,
+                9.97,
+                10.42
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              60.1397,
+              80.7474
+            ],
+            "loop": [
+              81.682,
+              89.6116
+            ]
+          }
+        },
+        {
+          "name": "Close the lid... and hush",
+          "beats": 13.5,
+          "loopFrom": 7.5,
+          "events": [
+            {
+              "type": "cushions",
+              "beat": 0.0,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "note",
+              "beat": 0.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 1.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 3.0,
+              "from": "comb"
+            },
+            {
+              "type": "hush",
+              "beat": 3.0,
+              "lengthBeats": 12
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "comb",
+              "gold": true
+            },
+            {
+              "type": "pins",
+              "beat": 7.5,
+              "dir": 1
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "comb"
+            },
+            {
+              "type": "twirl",
+              "beat": 9.0
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "comb"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 1.03,
+              "text": "Close the lid... and ^HUSH... in the dark I'm all alone,",
+              "at": [
+                -0.0,
+                0.91,
+                1.62,
+                2.34,
+                3.11,
+                3.56,
+                4.34,
+                4.82,
+                5.65,
+                5.83,
+                6.16
+              ]
+            },
+            {
+              "beat": 8.06,
+              "text": "Every tick, a little step, every step a little stone.",
+              "at": [
+                0.0,
+                0.57,
+                1.77,
+                1.89,
+                2.14,
+                3.35,
+                3.67,
+                4.56,
+                4.68,
+                4.96
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              80.7474,
+              89.6116
+            ],
+            "loop": [
+              85.6062,
+              89.6116
+            ]
+          }
+        },
+        {
+          "name": "Every night for no one",
+          "beats": 19.5,
+          "loopFrom": 13.5,
+          "events": [
+            {
+              "type": "cushions",
+              "beat": 0.0,
+              "up": [
+                1,
+                1
+              ]
+            },
+            {
+              "type": "sweep",
+              "beat": 3.0,
+              "lengthBeats": 5
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "comb"
+            },
+            {
+              "type": "cushions",
+              "beat": 11.0,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "bourree",
+              "beat": 12.0,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 13.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 15.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 18.0,
+              "from": "hand"
+            },
+            {
+              "type": "twirl",
+              "beat": 18.0
+            },
+            {
+              "type": "note",
+              "beat": 19.0,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.31,
+              "text": "Every night the same sweet song, and every night for no one... but you?",
+              "at": [
+                -0.0,
+                0.85,
+                1.83,
+                1.95,
+                2.07,
+                2.19,
+                3.37,
+                3.49,
+                3.83,
+                4.24,
+                4.6,
+                4.84,
+                5.05,
+                5.32
+              ]
+            },
+            {
+              "beat": 7.52,
+              "text": "One two three, one two three, I have danced since nineteen two!",
+              "at": [
+                -0.0,
+                0.12,
+                0.64,
+                1.29,
+                1.68,
+                2.19,
+                2.82,
+                3.28,
+                3.68,
+                4.08,
+                4.57,
+                5.65
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              89.6116,
+              102.1039
+            ],
+            "loop": [
+              98.3249,
+              102.1039
+            ]
+          }
+        }
+      ],
+      "audio": {
+        "song": "audio/pirouette/p1.mp3",
+        "loop": "audio/pirouette/p1-loop.mp3",
+        "at": 22.6801
+      }
+    },
+    {
+      "name": "SECOND TURN OF THE KEY",
+      "subtitle": "A minuet",
+      "bpm": 103.3594,
+      "melody": "minuet",
+      "damage": {
+        "perfect": 0.058,
+        "good": 0.038
+      },
+      "sections": [
+        {
+          "name": "A minuet must have a partner",
+          "beats": 30.0,
+          "loopFrom": 18.0,
+          "events": [
+            {
+              "type": "move",
+              "beat": 6.0,
+              "to": "center"
+            },
+            {
+              "type": "minuet",
+              "beat": 7.5,
+              "every": 1.5
+            },
+            {
+              "type": "minuet",
+              "beat": 18.0,
+              "every": 1.5
+            },
+            {
+              "type": "note",
+              "beat": 28.5,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.8,
+              "text": "Click! Click! Wind me up again!",
+              "at": [
+                -0.0,
+                2.16,
+                3.98,
+                4.1,
+                4.57,
+                4.85
+              ]
+            },
+            {
+              "beat": 18.95,
+              "text": "A minuet must have a partner, a bow, a step, a turn,",
+              "at": [
+                0.0,
+                0.58,
+                1.16,
+                1.74,
+                2.17,
+                2.46,
+                3.4,
+                3.52,
+                3.84,
+                4.26,
+                4.45,
+                4.86
+              ]
+            },
+            {
+              "beat": 24.94,
+              "text": "I'll show you once, you follow twice, come on, it's time you learn!",
+              "at": [
+                -0.0,
+                0.34,
+                0.65,
+                0.94,
+                1.28,
+                1.66,
+                2.19,
+                3.04,
+                3.2,
+                3.75,
+                4.07,
+                4.47,
+                4.89
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              0.0,
+              17.4034
+            ],
+            "loop": [
+              10.4316,
+              17.4034
+            ]
+          }
+        },
+        {
+          "name": "Step and step and turn! Now you!",
+          "beats": 24.0,
+          "loopFrom": 12.0,
+          "events": [
+            {
+              "type": "minuet",
+              "beat": 0.0,
+              "every": 1.5
+            },
+            {
+              "type": "cushions",
+              "beat": 7.5,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "comb",
+              "gold": true
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "comb"
+            },
+            {
+              "type": "pins",
+              "beat": 13.5,
+              "dir": -1
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "hand"
+            },
+            {
+              "type": "bourree",
+              "beat": 19.5,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 22.5,
+              "from": "comb"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.43,
+              "text": "^STEP and ^STEP and ^TURN! Now you!",
+              "at": [
+                -0.0,
+                2.01,
+                2.17,
+                2.69,
+                3.7,
+                5.15,
+                5.27
+              ]
+            },
+            {
+              "beat": 6.37,
+              "text": "^STEP and ^STEP and ^TURN! Now you!",
+              "at": [
+                -0.0,
+                1.44,
+                2.24,
+                3.71,
+                3.83,
+                5.21,
+                5.33
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              17.4034,
+              31.3585
+            ],
+            "loop": [
+              23.5102,
+              30.482
+            ]
+          }
+        },
+        {
+          "name": "The velvet cushions rise",
+          "beats": 12.5,
+          "loopFrom": 6.5,
+          "events": [
+            {
+              "type": "cushions",
+              "beat": 0.0,
+              "up": [
+                0,
+                1
+              ]
+            },
+            {
+              "type": "note",
+              "beat": 1.5,
+              "from": "hand",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 3.0,
+              "from": "comb",
+              "high": true
+            },
+            {
+              "type": "sweep",
+              "beat": 4.5,
+              "lengthBeats": 3
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "cushions",
+              "beat": 6.0,
+              "up": [
+                1,
+                0
+              ],
+              "comment": "they swap: run for the other one"
+            },
+            {
+              "type": "cushions",
+              "beat": 6.5,
+              "up": [
+                1,
+                0
+              ],
+              "comment": "the refrain raises them again on every pass"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "comb"
+            },
+            {
+              "type": "sweep",
+              "beat": 12.0,
+              "lengthBeats": 3
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 1.16,
+              "text": "Round and round the little stage, the velvet cushions rise,",
+              "at": [
+                -0.0,
+                0.6,
+                0.96,
+                1.45,
+                1.72,
+                2.06,
+                3.12,
+                3.24,
+                3.87,
+                4.55
+              ]
+            },
+            {
+              "beat": 7.06,
+              "text": "Mind the pillows, mind the gap, and never close your eyes!",
+              "at": [
+                0.0,
+                0.12,
+                0.34,
+                1.33,
+                1.48,
+                2.15,
+                2.81,
+                3.14,
+                3.74,
+                4.36,
+                4.78
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              31.3585,
+              38.9341
+            ],
+            "loop": [
+              45.8536,
+              49.3772
+            ]
+          }
+        },
+        {
+          "name": "THUMP before your eyes",
+          "beats": 24.0,
+          "loopFrom": 12.0,
+          "events": [
+            {
+              "type": "pins",
+              "beat": 3.0,
+              "dir": 1
+            },
+            {
+              "type": "pins",
+              "beat": 6.0,
+              "dir": -1
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "mirror",
+              "gold": true
+            },
+            {
+              "type": "move",
+              "beat": 10.0,
+              "to": "center"
+            },
+            {
+              "type": "minuet",
+              "beat": 12.0,
+              "every": 1.5
+            },
+            {
+              "type": "kicks",
+              "beat": 22.5,
+              "count": 2
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.49,
+              "text": "And the pins upon the cylinder go ^THUMP before your eyes!",
+              "at": [
+                0.0,
+                0.16,
+                0.38,
+                1.03,
+                1.72,
+                2.05,
+                2.73,
+                3.45,
+                4.12,
+                4.91,
+                5.43
+              ]
+            },
+            {
+              "beat": 6.74,
+              "text": "^THUMP and ^THUMP and ^THUMP again, a partner never dies!",
+              "at": [
+                0.0,
+                1.39,
+                1.97,
+                3.23,
+                3.46,
+                3.7,
+                3.93,
+                4.16,
+                4.4,
+                4.78
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              38.9341,
+              52.8951
+            ],
+            "loop": [
+              47.6241,
+              54.654
+            ]
+          }
+        },
+        {
+          "name": "Oh... you do it too",
+          "beats": 28.5,
+          "loopFrom": 16.5,
+          "events": [
+            {
+              "type": "minuet",
+              "beat": 0.0,
+              "every": 1.5
+            },
+            {
+              "type": "minuet",
+              "beat": 12.0,
+              "every": 1.5
+            },
+            {
+              "type": "note",
+              "beat": 22.5,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "bourree",
+              "beat": 22.5,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 24.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 27.0,
+              "from": "comb"
+            },
+            {
+              "type": "twirl",
+              "beat": 27.0
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.94,
+              "text": "^STEP and ^STEP and ^TURN! Now you do it too...",
+              "at": [
+                -0.0,
+                1.28,
+                1.71,
+                3.13,
+                3.32,
+                6.58,
+                7.02,
+                8.32,
+                8.63,
+                8.95
+              ]
+            },
+            {
+              "beat": 13.26,
+              "text": "Nobody ever followed me... the way that you do...",
+              "at": [
+                0.0,
+                1.22,
+                2.85,
+                4.42,
+                5.73,
+                6.5,
+                8.07,
+                9.55,
+                10.33
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              52.8951,
+              69.6192
+            ],
+            "loop": [
+              59.9249,
+              66.9954
+            ]
+          }
+        }
+      ],
+      "audio": {
+        "song": "audio/pirouette/p2.mp3",
+        "loop": "audio/pirouette/p2-loop.mp3",
+        "at": 0.0
+      }
+    },
+    {
+      "name": "THIRD TURN OF THE KEY",
+      "subtitle": "A frantic waltz",
+      "bpm": 117.4538,
+      "melody": "frantic",
+      "damage": {
+        "perfect": 0.051,
+        "good": 0.034
+      },
+      "sections": [
+        {
+          "name": "Faster, faster, spin me round",
+          "beats": 22.5,
+          "loopFrom": 10.5,
+          "events": [
+            {
+              "type": "move",
+              "beat": 0.0,
+              "to": "center"
+            },
+            {
+              "type": "mirror",
+              "beat": 0.0,
+              "out": true,
+              "comment": "her reflection steps out of the mirror and dances across the stage from her"
+            },
+            {
+              "type": "kicks",
+              "beat": 3.0,
+              "count": 3
+            },
+            {
+              "type": "note",
+              "beat": 3.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "hand"
+            },
+            {
+              "type": "twirl",
+              "beat": 9.0
+            },
+            {
+              "type": "dash",
+              "beat": 12.0,
+              "to": "right"
+            },
+            {
+              "type": "note",
+              "beat": 13.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 15.0,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "hand"
+            },
+            {
+              "type": "note",
+              "beat": 18.0,
+              "from": "comb"
+            },
+            {
+              "type": "bourree",
+              "beat": 18.0,
+              "count": 4
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0,
+              "text": "Click! Click! Faster! Wind me up again!",
+              "at": [
+                0,
+                1.48,
+                3.59,
+                4.51,
+                4.72,
+                5.27,
+                5.54
+              ]
+            },
+            {
+              "beat": 11.62,
+              "text": "Faster, faster, spin me round, I'll never, ever stop!",
+              "at": [
+                -0.0,
+                1.25,
+                1.89,
+                2.01,
+                2.23,
+                2.98,
+                3.35,
+                3.84,
+                4.31
+              ]
+            },
+            {
+              "beat": 17.68,
+              "text": "Faster, faster, spin me round, until the springs go pop!",
+              "at": [
+                0.0,
+                0.96,
+                1.78,
+                1.9,
+                2.18,
+                2.68,
+                3.42,
+                3.72,
+                4.22,
+                4.66
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              0.2728,
+              11.7841
+            ],
+            "loop": [
+              4.8704,
+              11.0121
+            ]
+          }
+        },
+        {
+          "name": "Kick! Kick! Kick!",
+          "beats": 24.0,
+          "loopFrom": 12.0,
+          "events": [
+            {
+              "type": "move",
+              "beat": 0.0,
+              "to": "center"
+            },
+            {
+              "type": "kicks",
+              "beat": 1.5,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 3.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "comb"
+            },
+            {
+              "type": "cushions",
+              "beat": 6.0,
+              "up": [
+                1,
+                1
+              ]
+            },
+            {
+              "type": "sweep",
+              "beat": 9.0,
+              "lengthBeats": 4
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "comb",
+              "gold": true
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "hand",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 13.5,
+              "from": "comb"
+            },
+            {
+              "type": "cushions",
+              "beat": 14.0,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "pins",
+              "beat": 15.0,
+              "dir": 1
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "hand"
+            },
+            {
+              "type": "pins",
+              "beat": 19.5,
+              "dir": -1
+            },
+            {
+              "type": "note",
+              "beat": 22.5,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 1.32,
+              "text": "^KICK! ^KICK! A fouett\u00e9, I'll dance until I drop!",
+              "at": [
+                0.0,
+                0.82,
+                1.42,
+                1.76,
+                2.11,
+                2.98,
+                3.45,
+                3.96,
+                4.33
+              ]
+            },
+            {
+              "beat": 7.21,
+              "text": "^KICK! ^KICK! Another one, I'll never, ever stop!",
+              "at": [
+                0.0,
+                0.81,
+                1.44,
+                1.94,
+                2.97,
+                3.16,
+                3.76,
+                4.26
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              11.7841,
+              24.0849
+            ],
+            "loop": [
+              17.9258,
+              24.0849
+            ]
+          }
+        },
+        {
+          "name": "Fifty years of dust and moths",
+          "beats": 16.5,
+          "loopFrom": 10.5,
+          "events": [
+            {
+              "type": "hush",
+              "beat": 0.0,
+              "lengthBeats": 12
+            },
+            {
+              "type": "mirror",
+              "beat": 0.0,
+              "out": false
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "comb"
+            },
+            {
+              "type": "twirl",
+              "beat": 10.5
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 12.0,
+              "from": "comb"
+            },
+            {
+              "type": "bourree",
+              "beat": 12.0,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 13.5,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 15.0,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.81,
+              "text": "Fifty years of dust and ^MOTHS come fluttering from the seams,",
+              "at": [
+                0.0,
+                0.92,
+                1.82,
+                2.1,
+                2.56,
+                2.84,
+                3.12,
+                3.55,
+                4.26,
+                4.81,
+                5.05
+              ]
+            },
+            {
+              "beat": 6.82,
+              "text": "And my ^MIRROR girl is breaking free, she's dancing out of my dreams!",
+              "at": [
+                -0.0,
+                0.18,
+                0.45,
+                1.0,
+                1.56,
+                1.83,
+                2.5,
+                3.43,
+                3.68,
+                4.38,
+                4.9,
+                5.11,
+                5.44
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              24.0849,
+              32.7459
+            ],
+            "loop": [
+              32.7459,
+              35.8574
+            ]
+          }
+        },
+        {
+          "name": "Bravo! Bravo!",
+          "beats": 12.0,
+          "loopFrom": 6.0,
+          "events": [
+            {
+              "type": "move",
+              "beat": 0.0,
+              "to": "left"
+            },
+            {
+              "type": "mirror",
+              "beat": 0.5,
+              "out": true
+            },
+            {
+              "type": "note",
+              "beat": 1.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 3.0,
+              "from": "mirror"
+            },
+            {
+              "type": "bouquets",
+              "beat": 3.0,
+              "count": 4
+            },
+            {
+              "type": "dash",
+              "beat": 4.5,
+              "to": "right"
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "hand",
+              "gold": true
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "hand"
+            },
+            {
+              "type": "kicks",
+              "beat": 7.5,
+              "count": 3
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.8,
+              "text": "^BRAVO! ^BRAVO! Throw me flowers, throw me roses, throw them all!",
+              "at": [
+                0.0,
+                2.0,
+                3.14,
+                3.26,
+                3.46,
+                4.24,
+                4.36,
+                4.52,
+                5.08,
+                5.3,
+                5.59
+              ]
+            },
+            {
+              "beat": 7.58,
+              "text": "^BRAVO! ^BRAVO! Curtain up, the curtain mustn't fall!",
+              "at": [
+                -0.0,
+                0.77,
+                1.87,
+                2.21,
+                2.55,
+                2.87,
+                3.74,
+                4.1
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              32.7459,
+              38.9399
+            ],
+            "loop": [
+              34.3191,
+              37.3899
+            ]
+          }
+        },
+        {
+          "name": "The audience that never came",
+          "beats": 25.5,
+          "loopFrom": 13.5,
+          "events": [
+            {
+              "type": "cushions",
+              "beat": 2.0,
+              "up": [
+                1,
+                1
+              ]
+            },
+            {
+              "type": "sweep",
+              "beat": 4.5,
+              "lengthBeats": 6
+            },
+            {
+              "type": "note",
+              "beat": 4.5,
+              "from": "mirror",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 6.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 7.5,
+              "from": "hand",
+              "high": true
+            },
+            {
+              "type": "note",
+              "beat": 9.0,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 10.5,
+              "from": "comb"
+            },
+            {
+              "type": "cushions",
+              "beat": 10.5,
+              "up": [
+                0,
+                0
+              ]
+            },
+            {
+              "type": "pins",
+              "beat": 13.5,
+              "dir": -1
+            },
+            {
+              "type": "twirl",
+              "beat": 16.5
+            },
+            {
+              "type": "note",
+              "beat": 16.5,
+              "from": "mirror"
+            },
+            {
+              "type": "bourree",
+              "beat": 18.0,
+              "count": 4
+            },
+            {
+              "type": "note",
+              "beat": 21.0,
+              "from": "comb"
+            },
+            {
+              "type": "note",
+              "beat": 22.5,
+              "from": "mirror"
+            },
+            {
+              "type": "note",
+              "beat": 24.0,
+              "from": "hand"
+            }
+          ],
+          "lyrics": [
+            {
+              "beat": 0.74,
+              "text": "For the audience that never came... that never came at all...",
+              "at": [
+                -0.0,
+                0.33,
+                0.71,
+                1.31,
+                1.84,
+                2.48,
+                3.26,
+                3.41,
+                4.04,
+                4.66,
+                5.03
+              ]
+            },
+            {
+              "beat": 7.05,
+              "text": "I danced for empty velvet seats... I danced for no one at all...",
+              "at": [
+                -0.0,
+                0.12,
+                0.62,
+                1.12,
+                1.78,
+                2.22,
+                2.88,
+                3.35,
+                3.78,
+                4.32,
+                4.75,
+                5.78,
+                6.31
+              ]
+            }
+          ],
+          "audio": {
+            "sung": [
+              38.9399,
+              52.0417
+            ],
+            "loop": [
+              42.0165,
+              48.1698
+            ]
+          }
+        }
+      ],
+      "audio": {
+        "song": "audio/pirouette/p3.mp3",
+        "loop": "audio/pirouette/p3-loop.mp3",
+        "at": 0.2728
+      }
+    }
+  ],
+  "audio": {
+    "intro": {
+      "file": "audio/pirouette/p1.mp3",
+      "to": 11.3023
+    },
+    "outro": "audio/pirouette/outro.mp3"
+  }
+}

@@ -1,0 +1,293 @@
+{
+  "comment": "The scenery and objects of Old Smokestack's level, from the image AI (prompts in PROMPTS.md, same numbers). Save image N as art/smokestack/NN.png (or .jpg) and run: npm run art -- smokestack",
+  "sheets": [
+    {
+      "file": "01",
+      "type": "objects",
+      "names": [
+        "wisp",
+        "wisp2",
+        "sun",
+        "moon",
+        "twinkle"
+      ]
+    },
+    {
+      "file": "02",
+      "type": "strip",
+      "name": "farhills"
+    },
+    {
+      "file": "03",
+      "type": "strip",
+      "name": "hills"
+    },
+    {
+      "file": "04",
+      "type": "strip",
+      "name": "skyline"
+    },
+    {
+      "file": "05",
+      "type": "strip",
+      "name": "mountains"
+    },
+    {
+      "file": "06",
+      "type": "strip",
+      "name": "pinehills"
+    },
+    {
+      "file": "07",
+      "type": "strip",
+      "name": "canyonfar"
+    },
+    {
+      "file": "08",
+      "type": "strip",
+      "name": "cliffs"
+    },
+    {
+      "file": "09",
+      "type": "objects",
+      "names": [
+        "deadtree",
+        "crowtree",
+        "pole",
+        "polecrow",
+        "scarecrow",
+        "thorn",
+        "fence",
+        "rock"
+      ],
+      "seeThrough": [
+        "fence"
+      ]
+    },
+    {
+      "file": "10",
+      "type": "objects",
+      "names": [
+        "house",
+        "house2",
+        "watertower",
+        "semaphore",
+        "lamppost",
+        "stationclock"
+      ],
+      "seeThrough": [
+        "semaphore",
+        "watertower",
+        "lamppost"
+      ],
+      "anchors": {
+        "watertower": {
+          "spout": "rightmost"
+        }
+      }
+    },
+    {
+      "file": "11",
+      "type": "objects",
+      "names": [
+        "grandclock",
+        "grandclock2",
+        "cuckootree",
+        "handcross",
+        "clockstone",
+        "gravefence",
+        "watchpile"
+      ],
+      "seeThrough": [
+        "gravefence",
+        "handcross"
+      ],
+      "anchors": {
+        "cuckootree": {
+          "door": [
+            60,
+            97
+          ]
+        }
+      }
+    },
+    {
+      "file": "12",
+      "type": "objects",
+      "names": [
+        "pine",
+        "pine2",
+        "owltree",
+        "eyesbush"
+      ]
+    },
+    {
+      "file": "13",
+      "type": "objects",
+      "names": [
+        "crag",
+        "crag2",
+        "vulture"
+      ]
+    },
+    {
+      "file": "14",
+      "type": "objects",
+      "names": [
+        "portal",
+        "tunnelwall",
+        "beam",
+        "lantern"
+      ],
+      "seeThrough": [
+        "beam"
+      ],
+      "tiles": [
+        "tunnelwall"
+      ]
+    },
+    {
+      "file": "15",
+      "type": "objects",
+      "names": [
+        "boxcar",
+        "anvil",
+        "piano",
+        "trunk",
+        "coal",
+        "sign"
+      ]
+    },
+    {
+      "file": "16",
+      "type": "objects",
+      "names": [
+        "ticket",
+        "punchOpen",
+        "punchClosed",
+        "crossingPost",
+        "crossingArm",
+        "cuckooBird"
+      ],
+      "seeThrough": [
+        "crossingPost",
+        "punchOpen"
+      ],
+      "anchors": {
+        "crossingArm": {
+          "pivot": [
+            18,
+            24
+          ]
+        },
+        "punchOpen": {
+          "grip": [
+            245,
+            95
+          ],
+          "jaw": [
+            20,
+            80
+          ]
+        }
+      }
+    },
+    {
+      "file": "17",
+      "type": "objects",
+      "names": [
+        "leverBase",
+        "leverHandle",
+        "windKey",
+        "ghostWatch",
+        "grandfatherCase",
+        "pendulum"
+      ],
+      "seeThrough": [
+        "leverBase"
+      ],
+      "anchors": {
+        "leverBase": {
+          "pivot": [
+            100,
+            42
+          ]
+        },
+        "leverHandle": {
+          "pivot": [
+            22,
+            230
+          ],
+          "tip": [
+            148,
+            30
+          ]
+        },
+        "pendulum": {
+          "pivot": [
+            36,
+            13
+          ],
+          "bob": [
+            36,
+            208
+          ]
+        },
+        "grandfatherCase": {
+          "face": [
+            80,
+            90
+          ],
+          "doorTop": [
+            52,
+            158
+          ],
+          "doorBottom": [
+            108,
+            240
+          ]
+        }
+      }
+    },
+    {
+      "file": "16b",
+      "type": "objects",
+      "names": [
+        "punchClosed",
+        "windKey"
+      ],
+      "comment": "redone: in 16 the closed punch came out open, in 17 the key had no shaft",
+      "anchors": {
+        "punchClosed": {
+          "grip": [
+            430,
+            100
+          ],
+          "jaw": [
+            10,
+            95
+          ]
+        },
+        "windKey": {
+          "pivot": [
+            62,
+            117
+          ],
+          "tip": [
+            330,
+            117
+          ]
+        }
+      },
+      "seeThrough": [
+        "windKey"
+      ]
+    },
+    {
+      "file": "19",
+      "type": "tile",
+      "name": "rocktile",
+      "comment": "the mountain's rock, seen cut through, for the tunnel"
+    }
+  ]
+}

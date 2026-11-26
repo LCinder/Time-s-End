@@ -2,7 +2,7 @@
 
 import { clampOffset, saveCalibration, type CalibrationData } from './Calibration';
 import { loadSettings, writeSave, writeSettings, type SaveData, type Settings } from './Save';
-import type { ArtManifest, ControlsConfig, DifficultySpec, GameConfig, LevelData, PlatformLevel, StoryData } from './types';
+import type { ArtManifest, ControlsConfig, DifficultySpec, DuelInfo, GameConfig, LevelData, PlatformLevel, StoryData } from './types';
 
 export interface Results {
   levelId: string;
@@ -15,7 +15,7 @@ export interface Results {
 }
 
 /** Where to go when a level ends. */
-export type ReturnTo = 'hub' | 'programme' | 'title';
+export type ReturnTo = 'hub' | 'programme' | 'title' | 'test';
 
 export interface GhostSample {
   b: number; // beat
@@ -33,6 +33,8 @@ class GameState {
   /** Hand-drawn pose sheets that were found and loaded, by boss id. */
   art: Record<string, ArtManifest> = {};
   platformLevels: Record<string, PlatformLevel> = {};
+  /** Duel levels (Miss Pirouette…), loaded for the chapters whose feature is a duel. */
+  duels: Record<string, DuelInfo> = {};
   story!: StoryData;
   difficulty = 'normal';
   /** Practice: start the level at this beat (URL ?beat=64). */
@@ -48,6 +50,11 @@ class GameState {
   returnTo: ReturnTo = 'title';
   /** The previous attempt of each level, drawn as a ghost on the next one (idea 11). */
   ghosts: Record<string, GhostSample[]> = {};
+
+  /** Any level the game can start (chase, duel or interlude), by id. */
+  levelInfo(id: string): { title: string; subtitle: string } | undefined {
+    return this.levels[id] ?? this.duels[id] ?? this.platformLevels[id];
+  }
 
   get diff(): DifficultySpec {
     return this.difficulties[this.difficulty] ?? Object.values(this.difficulties)[0];

@@ -5,7 +5,7 @@ import * as S from './Synth';
 
 export type SfxName =
   | 'jump' | 'jumpBeat' | 'land' | 'dash' | 'hit' | 'onBeat' | 'whistle' | 'crash' | 'bigCrash'
-  | 'pianoCrash' | 'hop' | 'boing' | 'pop' | 'death' | 'victory' | 'rewind' | 'click' | 'select' | 'fall'
+  | 'pianoCrash' | 'keyLo' | 'keyMid' | 'keyHi' | 'hop' | 'boing' | 'pop' | 'death' | 'victory' | 'rewind' | 'click' | 'select' | 'fall'
   | 'bell' | 'cuckoo' | 'punch' | 'tick' | 'stamp';
 
 export function sfx(name: SfxName, delay = 0): void {
@@ -23,6 +23,10 @@ export function sfx(name: SfxName, delay = 0): void {
     case 'crash': S.crash(d, t, 1); break;
     case 'bigCrash': S.crash(d, t, 2); S.crash(d, t + 0.12, 1.4); break;
     case 'pianoCrash': S.pianoCrash(d, t); break;
+    // the funeral march on the piano's keys: low, sombre notes with a thump of the hammer
+    case 'keyLo': S.ding(d, t, 46); S.ding(d, t, 53); S.woodblock(d, t, 40); break;
+    case 'keyMid': S.ding(d, t, 49); S.ding(d, t, 56); S.woodblock(d, t, 42); break;
+    case 'keyHi': S.ding(d, t, 53); S.ding(d, t, 58); S.woodblock(d, t, 44); break;
     case 'hop': S.woodblock(d, t, 72 + Math.floor(Math.random() * 5)); break;
     case 'boing': S.boing(d, t); break;
     case 'pop': S.pop(d, t); break;

@@ -22,6 +22,14 @@ Abre `http://localhost:5173`. Para la versión publicable: `npm run build` (gene
 
 Ejemplo: `http://localhost:5173/?level=smokestack&beat=204&debug=1` empieza justo antes del túnel.
 
+**Escenario de pruebas (sin parámetros):** en el título, el botón **▶ TEST STAGE** de arriba a la izquierda (o la tecla **T**, también en la pantalla "BIJOU PICTURES presents"). Se quita para la versión final con `"testStage": false` en `game.json`. Sirve también donde la dirección no lleva parámetros (por ejemplo, un enlace publicado). Ahí puedes:
+- quitar o poner las vidas;
+- cambiar la dificultad;
+- entrar en cualquier nivel de plataformas o en el visor de personajes;
+- en cada persecución, empezar desde el principio, desde cualquier marca de ensayo o unos beats antes de cada momento de la canción (billetes, picadora, paso a nivel, cucos, péndulo, agujas, depósito, llave, relojes fantasma, solo de silencio, túnel, el puente roto).
+
+Al salir del nivel vuelves a esa lista. Dentro, `F2` pone y quita las vidas y `R` reinicia desde el mismo punto. Nada de lo que juegues ahí se guarda en las latas de película. Código: `src/scenes/TestScene.ts`.
+
 **Jugar el capítulo 1 completo:** en el título, **NEW GAME** → elige una lata de película → introducción → el Bijou. **CONTINUE** te devuelve a donde lo dejaste.
 
 **Teclas en partida:** `F1` muestra u oculta la depuración · `F2` activa o quita el modo prueba sin vidas (con la depuración activada) · `R` reinicia · `Esc` pausa. En el Bijou, `▲` mira y usa las cosas.
@@ -62,8 +70,9 @@ Los niveles alternan entre **derrotar al jefe** (duelos) y **huir / progresar** 
 ### Pilares
 1. **La canción ES el nivel.** Cada peligro está escrito en la letra y cae al compás.
 2. **Memorable.** Cada jefe tiene un estilo musical, una mecánica y un momento estrella propios.
-3. **Exigente pero justo.** Todo peligro se avisa (con la letra, el aviso visual y el ritmo) antes de golpear.
-4. **Configurable.** Dificultad, ritmo, eventos y niveles se definen en **JSON** que el autor puede editar sin tocar código.
+3. **Jefes implacables, pero justos.** Un *souls-like* mezclado con Cuphead y Billie Bust Up: cada jefe es un muro que se aprende a base de morir, con ataques densos que se superponen y van al ritmo. Todo peligro se avisa (con la letra, el aviso visual y el ritmo) antes de golpear, y todo tiene respuesta. Pocas vidas: perder una repite la fase y perder la última reinicia el combate.
+4. **El detalle es obligatorio.** El juego es para venderlo: una mano al revés, un reflejo imposible o un pie que flota son fallos tan graves como un cuelgue, porque se notan al instante y abaratan todo. Cada personaje se revisa de cerca (manos, pies, cara, objetos, reflejos y sombras) en cada avance (§11.8, `boss-visual-review`).
+5. **Configurable.** Dificultad, ritmo, eventos y niveles se definen en **JSON** que el autor puede editar sin tocar código.
 
 ---
 
@@ -243,7 +252,13 @@ En los años 30 no se iba a ver una sola película: la sesión tenía **noticiar
   - **Enhebrar el proyector:** es el ritual. Usa el tempo del jefe y hace falta el 70 %.
   - **Premio:** las palomitas y la taquilla dan 1 fotograma con rango B y 2 con rango A o más.
 - **Fotogramas:** hay 28 y la bobina necesita 12.
-- **Adelantos de capítulos futuros**, que se pueden mirar pero aún no se abren: el cuarto de revelado del sótano (Darkroom), el espejo del vestíbulo (The Echo), la caja de música de objetos perdidos (Miss Pirouette), el reloj de pie (Grandfather Pendulum) y la trampilla del tejado. *El nivel Darkroom llega con el primer cambio de época (capítulo 3).*
+- **Adelantos de capítulos futuros**, que se pueden mirar pero aún no se abren: el cuarto de revelado del sótano (Darkroom), el espejo del vestíbulo (The Echo), el reloj de pie (Grandfather Pendulum) y la trampilla del tejado. *El nivel Darkroom llega con el primer cambio de época (capítulo 3).* La caja de música de objetos perdidos se abre en el capítulo 2.
+
+**Qué hay en el capítulo 2** (de momento, solo el jefe):
+- **Se entra por la caja de música de objetos perdidos** (`"entry": "lostfound"` en `story.json`), que se abre en cuanto Old Smokestack tiene su final. No hace falta bobina: el empalmador y el proyector dicen que la música viene del vestíbulo, y el marcador pone *♪ THE LOST & FOUND*.
+- **Su final en la sala:** la tapa se abre, Miss Pirouette sale y se queda bailando, diminuta, encima de la caja (y hace una reverencia si Tick se acerca). El órgano gana una melodía, el reloj avanza 7 segundos, la nieve se derrite y llega la primavera. Deja en la caja su objeto perdido, que va a la mesa de Elias: *A faded photograph* ("Rose, 1929. Same time tomorrow?"). La marquesina anuncia a Mister Too-Late.
+- **Después:** la caja ofrece otro baile, y el duelo aparece en el programa.
+- **Falta:** las piezas de la sesión del capítulo 2 (noticiario, serial, canción y recuerdo).
 
 **Un capítulo tipo**
 1. **Recorrido** por el edificio hasta la zona nueva.
@@ -319,10 +334,109 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
 
 **1. Old Smokestack (las despedidas).** El último tren, el que se lleva a la gente que no vuelve. La persecución ya existe; solo se le añade este trasfondo. Es el mismo tren que perdió Mister Too-Late. *Momento estrella:* el puente roto, el tren que nunca llega.
 
-**2. Miss Pirouette (la soledad)** — *sustituye a Madame Gramola.*
-- **Concepto:** una bailarina diminuta dentro de una caja de música que lleva cincuenta años bailando la misma melodía, sola, esperando que alguien abra la tapa. Silueta: tutú de campana, brazos de manguera en quinta posición, la llave de la cuerda clavada en la espalda.
-- **Mecánica:** cada fase es una vuelta de llave, y el vals va cada vez **más rápido**, al contrario que Grandfather Pendulum. Los dientes del peine de la caja disparan notas que hay que **devolver a tiempo** (parry). Cuando la tapa se cierra, todo queda a oscuras y en silencio: solo de silencio (idea 9) dentro de la caja.
-- **Momento estrella:** se acaba la cuerda, la melodía se ralentiza hasta pararse y, por primera vez, alguien la está mirando: hace una reverencia ante Tick.
+**2. Miss Pirouette (la soledad)** — *sustituye a Madame Gramola.* ✅ ficha aprobada · en construcción
+- **Concepto:** una bailarina diminuta de porcelana dentro de una caja de música. Lleva cincuenta años bailando la misma melodía, sola, esperando que alguien abra la tapa.
+  - **Silueta:** cara de porcelana con una grieta, moño alto con tiara, corpiño con cordones, tutú de campana, brazos de manguera en quinta posición, zapatillas de punta y una llave de corazón clavada en la espalda.
+  - **Carácter:** una diva orgullosa y frágil que finge no necesitar a nadie. Se burla con desdén elegante y, cuando vas bien, se pone nerviosa y se le escapa un paso.
+  - Se llega por la caja de música de objetos perdidos del Bijou.
+- **Nivel Duel dentro de la caja de música** (arena fija):
+  - **Escenario:** suelo de terciopelo con la plataforma giratoria en el centro, el cilindro de púas y el peine de metal al fondo, el espejo de la tapa arriba y compartimentos de terciopelo como plataformas. La luz entra por la tapa.
+  - **Daño:** Tick no dispara. Le devuelve sus notas a tiempo (parry en el beat) y cada una le quita cuerda (PERFECT 0,048 · 0,058 · 0,051 por vuelta; GOOD 0,032 · 0,038 · 0,034: un 60 % más que antes, que tenía demasiada vida). Su vida es la llave de su espalda, que gira hacia atrás.
+  - **Ritmo:** la música va en 3/4 y los peligros caen en el "UN-dos-tres".
+- **Tres fases, tres vueltas de llave**, cada una más rápida:
+  1. **Vals de caja de música:** notas, el giro del tutú y su reflejo. A mitad de fase la tapa se cierra y llega un solo de silencio a oscuras.
+  2. **Minueto:** la plataforma gira y bailan en pareja (llamada y respuesta: ella marca 3 pasos y Tick los repite).
+  3. **Vals frenético:** todo a la vez y su reflejo sale del espejo.
+
+  Entre fases ella misma se da cuerda ("Click! Click! Wind me up again!") y el tempo sube. Si no le has quitado bastante cuerda, la sección se repite.
+- **Momento estrella y final:** se le acaba la cuerda, la melodía se frena hasta pararse y, por primera vez, alguien la está mirando. Hace una reverencia ante Tick.
+- **Eventos aprobados:** notas del peine, giro del tutú, fouettés, el espejo, la tapa que se cierra, las púas del cilindro, polillas, los ramos del público que nunca vino, el minueto en pareja, los cojines de terciopelo y un objeto perdido de Elias como recompensa.
+- **Canción** (hecha con Suno): *Mirror on the Lid*, vals en 3/4 (unas 187 negras por minuto, el mismo tempo toda la canción) de 4:30 con soprano de opereta de los años 20 y caja de música, pensada para la batalla: tres vueltas de cinco estrofas, cada una seguida de unos compases instrumentales. La letra anuncia cada ataque. El original está en `art/pirouette/song-source.mp3` y su instrumental separado en `art/pirouette/song-instrumental.mp3`; la letra en `public/audio/pirouette/lyrics.txt`; el estilo y la letra para Suno en `art/pirouette/SUNO.md`; cómo se prepara para el juego en [tools/duel-song](tools/duel-song/README.md).
+- **Personaje:** hoja de piezas generada con Magnific, versión D (más caricaturizada, estilo 1930): `art/pirouette/01.jpg`, recortada en blanco y negro con `npm run art -- pirouette` (piezas `pirBody`, `pirTiara`, `pirKey`, tres guantes y `pirShoe`, con sus puntos de anclaje en `art/pirouette/textures.json`).
+  - **Marioneta propia** (`src/entities/Pirouette.ts`), distinta de la del tren: de frente, sobre las puntas.
+    - **Siempre de frente, giros "de papel":** la cabeza no gira sobre su eje (una cara que se deslizaba por la cabeza mientras el pelo se quedaba quieto quedaba rarísimo). En las piruetas y los fouettés, todo el dibujo se estrecha hasta ser una línea y se abre al revés, una y otra vez, como en los dibujos de los 30, con líneas de giro blancas alrededor del tutú. Manos y pies tienen profundidad solo para saber si van delante o detrás de ella.
+    - **Las manos, del lado correcto:** el guante dibujado es una mano derecha vista desde la palma (pulgar a su derecha). Su mano derecha (a la izquierda de la pantalla) lo usa tal cual y la izquierda, en espejo; vista de espaldas, al revés. Con los brazos en alto el pulgar queda hacia dentro; con los brazos caídos, hacia fuera.
+    - **Brazos y piernas de manguera** con los guantes y las zapatillas de punta dibujados. En quinta posición (la pose de caja de música) los codos se abren y los brazos rodean la cabeza, sin cruzarle la cara. Muelles hacia cada pose, en pasos pequeños para que nunca se descontrolen.
+    - **Poses:** caja de música (girando despacio con los brazos en quinta), cantando, pirueta, fouettés, arabesque (de perfil), lanzar una nota (con la mano del lado de Tick), darse cuerda, risita, perder el equilibrio, reverencia, se le acaba la cuerda y la última reverencia.
+    - **Vals:** se eleva en el primer tiempo de cada compás de 3.
+    - **La llave de corazón** sobresale de su espalda y gira sobre su eje: deprisa al darse cuerda, despacio hacia atrás mientras baila, y quieta cuando se acaba.
+    - **La cara:** el mismo sistema de expresiones que el tren, con pestañas, labios pintados y colorete, y expresiones propias: altiva, coqueta, ofendida, risita, diva y tierna.
+  - Se ve en el visor de personajes (`?puppet=pirouette`, o desde el escenario de pruebas → Puppet viewer, ← →).
+- **El escenario: el interior de la caja de música** (`src/world/MusicBox.ts`). Fondo y piezas generados con Magnific y pasados a blanco y negro (`art/pirouette/02.jpg`, el fondo, tipo `"picture"`; `03.jpg`, las piezas):
+  - **Fondo fijo de 1280×720:** pared del fondo de terciopelo capitoné, alas laterales curvas, el mecanismo (cilindro y peine) al pie de la pared, telarañas y la tapa abierta arriba con un espejo ovalado.
+  - **Encima, lo que se mueve:**
+    - la plataforma giratoria donde baila (unas tachuelas de latón dan la vuelta al borde cuando gira);
+    - dos cojines de terciopelo que son plataformas para Tick y pueden subir sobre un muelle enorme;
+    - el haz de luz que entra por la tapa, con polvo flotando que brilla al ritmo (`lid` lo apaga);
+    - chispas en los dientes del peine cuando suena una nota;
+    - **su reflejo** en el óvalo de la tapa, pequeño y desvaído. El espejo está detrás de ella, así que muestra **su espalda**: pelo, moño, la llave y la espalda del corpiño, con las manos en el mismo lado de la pantalla que ella y vistas por el dorso.
+  - **Piezas para los eventos,** ya recortadas: la nota de latón (el proyectil), la polilla y el ramo de rosas.
+  - **Vista previa** para pasear por la caja con Tick (← → Z): `?stage=pirouette`, o en el escenario de pruebas → *Miss Pirouette: the music box* (`src/scenes/MusicBoxScene.ts`). Ella va haciendo su repertorio y lanza una nota de vez en cuando; no hay combate.
+- **El duelo** (`src/scenes/DuelScene.ts`, datos en `public/data/levels/pirouette.json`): en el juego, por la caja de objetos perdidos del Bijou (capítulo 2); para probar, `?duel=pirouette` o el escenario de pruebas → *THE LAST PIROUETTE*.
+  - **Su vida es su cuerda:** la barra de arriba, con una llave por cada vuelta que le queda.
+  - **La canción se adapta a lo que dure el combate (estrofas y estribillos).** Cada vuelta tiene cinco estrofas (`sections`), cada una con su nombre (aparece bajo la barra) y su tonalidad.
+    - **Cada estrofa suena entera una vez** (beats 0 … `beats`), tal cual en la canción, con los ataques que anuncia su letra.
+    - **Después, su estribillo instrumental** (los últimos 8 compases, `loopFrom` … final; 4 en las estrofas cortas) se repite, sin la voz y en espejo la primera vez y una sí y otra no (izquierda y derecha cambiadas), mientras su cuerda siga por encima del umbral de la estrofa (`until`; por defecto repartido: 0,8, 0,6, 0,4, 0,2 y 0). En cuanto baja, al acabar ese estribillo entra la siguiente estrofa cantada.
+    - Así **la letra nunca se desincroniza**, dure el combate 1 minuto o 20: cada verso suena cuando pasa lo que anuncia. Quien juega muy bien oye la canción de corrido; quien se atasca oye el estribillo, como un disco rayado de caja de música, y practica justo el ataque que la letra acaba de anunciar.
+    - **La canción grabada** (`audio` de cada vuelta en el JSON): `p1.mp3`, `p2.mp3` y `p3.mp3` en `public/audio/pirouette/` tienen las estrofas seguidas (el beat 0 de la vuelta cae en el segundo `at`), y `p1-loop.mp3`… la misma música sin la voz, separada con un modelo (UVR MDX-Net), para los estribillos. Cada trozo se programa con Web Audio en el beat exacto, con 6 ms de fundido en cada empalme. `loopAt` toma el estribillo de otros compases de la misma melodía cuando empalman mejor con la vuelta a la canción (medido por armonía).
+    - **Siempre a tempo con la música:** el tempo de Suno se mueve un poco (hasta un tiempo de desfase al final de una vuelta con un tempo fijo). Por eso cada estrofa se corta en los tiempos fuertes reales de la canción (detectados con librosa, `tools/duel-song/track.py` y `fit.py`) y cada trozo se reproduce ajustado a sus beats (`audio.sung` y `audio.loop` de cada estrofa, en segundos; casi siempre menos de un 1 % más rápido o más lento). Un beat del juego son dos negras, así que el tiempo fuerte de cada compás cae cada 1,5 beats: **las notas y los golpes caen en el tiempo fuerte** (y, si no cabe, en la negra libre más cercana), y el minueto da un paso por compás (`every: 1.5`).
+    - **Más rápida en cada vuelta sin cambiar el tono:** la segunda vuelta va al 110 % y la tercera al 125 % (estiradas con Rubber Band): 93,6 → 103,4 → 117,1 bpm del juego (un beat del juego son dos negras del vals).
+    - **La música nunca se para entre vueltas:** al vaciarse la cuerda (salvo en la última), la canción sigue hasta el siguiente beat y ahí entra la vuelta siguiente con su "Click! Click! Wind me up again!" (un fundido de 0,2 s). Solo al final del duelo se frena como una caja de música sin cuerda. Bajo la tapa cerrada (hush) suena algo apagada, pero no baja casi de volumen.
+    - **Volumen:** la canción suena un 25 % más fuerte y los efectos a un cuarto mientras dura el duelo (se restauran al salir).
+    - **El principio y el final:** antes de la primera vuelta suena su entrada hablada ("Oh! The lid... the light... a visitor? How rude!"). Cada vuelta nueva empieza con su "Click! Click! Wind me up again!". Al ganar, la música se frena y se apaga como una caja de música sin cuerda y canta su despedida ("I'm... winding... down... Thank you.") antes de hablar. Bajo la tapa cerrada (hush) la canción suena apagada.
+    - **Sin los archivos** (o si no cargan) suena el vals de caja de música generado por código, con las mismas estrofas y estribillos.
+    - **La letra en pantalla**, como en el tren: la línea que canta, con la pelotita saltando de palabra en palabra y las palabras gritadas más grandes (`lyrics` de cada estrofa, en beats desde su inicio, alineadas con la voz por Whisper: `tools/duel-song/lyrics.py`). Sus labios siguen las palabras. En un estribillo (sin voz) sale en su lugar *♫ REFRAIN ♫ send her notes back (C) to wind her down to the notch: then the song goes on*.
+    - **La canción nunca se corta a medias:** dentro de una estrofa su cuerda no baja más que el umbral de esa estrofa (una muesca en la barra marca dónde se para); solo en la última puede llegar a 0. Antes, quien le quitaba cuerda muy deprisa acababa la vuelta en mitad de una estrofa y la música se frenaba de golpe.
+    - **El comprobador** da error si un estribillo no tiene nada que devolver (se repetiría para siempre: pasaba en "Fifty years of dust and moths") y avisa si quita menos de 0,08 por vuelta.
+    - **El comprobador** exige que un estribillo siga siendo justo cuando vuelve: por ejemplo, si baja los cojines, tiene que volver a subirlos antes del siguiente barrido de tul.
+  - **Las notas (parry):** notitas vivas dibujadas a tinta (negras con borde blanco, con ojos de porción de tarta y una sonrisa; la dorada, blanca), que salen de su mano, del peine o de su reflejo y vuelan 2 beats en arco con un halo blanco, cabeceando hacia donde van y estirándose en cada beat (sin girar sobre sí mismas). Apuntan al sitio donde Tick pisa (no al Tick que salta, para que no le sigan por el aire); un anillo se cierra y le alcanza justo en el beat, y suena un "tic" un beat antes.
+    - **C en ese momento:** la nota vuelve a su cabeza y le quita cuerda, con chispas y una micro-pausa al acertar.
+    - **Ventanas:** PERFECT (±58 ms), GOOD (±105 ms) y OK (±152 ms, la mitad de daño) en normal.
+    - **Alcance:** vale si la nota está a menos de 150 px del cuerpo de Tick, donde está en ese momento o donde va a caer.
+    - **Recuperación:** tras devolver una nota, 0,1 s. Pulsar un poco pronto para una nota que ya viene (hasta 0,26 s antes de su ventana) no castiga: sale "early" y se puede volver a pulsar. Golpear al aire ("MISS") cuesta el combo y 0,25 s. Machacar C (3 golpes al aire en 1,5 s) le marea 0,9 s ("DIZZY!").
+    - **Cuándo hace daño:** se decide justo en el beat en que llega, según si toca el cuerpo de Tick en ese instante (lo que ve el jugador). Después se queda brillando el resto de la ventana por si aún la devuelves.
+    - **Notas doradas** (`"gold": true`), con una estrella blanca girando alrededor: devueltas con GOOD o mejor, Tick recupera un golpe (o, si no le habían dado, hacen el doble de daño). Hay dos por vuelta, siempre en la parte cantada (nunca en un estribillo, para que atascarse no dé más curas).
+    - **Notas altas** (`high`), con una línea de puntos y una flecha: pasan 190 px por encima del suelo. Solo se devuelven desde un cojín o en el aire; si se escapan, ella recupera un poco de cuerda.
+    - **Apartarse en el último medio beat:** la nota se rompe en el suelo, pero ella recoge la melodía y recupera un poco de cuerda. No se le puede ganar esquivando.
+  - **Los ataques:**
+    - **Tocarla hace daño** (el tutú y las piernas; por encima de su cabeza se puede pasar).
+    - **bourree (la caza):** avanza saltando de puntillas hacia Tick, un salto de hasta 100 px en la primera mitad de cada beat (`count` saltos), con flechas en el suelo que marcan hacia dónde va. Va más rápido que Tick: hay que saltar por encima de ella justo cuando aterriza (la voltereta ayuda) o subirse donde no llegue.
+    - **twirl:** su tutú barre el suelo en el beat; hay que estar en el aire o en un cojín.
+    - **sweep:** el tul cubre todo el suelo durante varios beats (cada beat hace daño). La única salida es subirse a un cojín, que antes ha subido sobre su muelle.
+    - **dash:** cruza el suelo girando en 2 beats; hay que saltarla. Solo hace daño hacia delante (no a quien queda detrás al arrancar), nunca termina junto a un cojín y, si fuera a pararse encima de Tick, se para antes.
+    - **pins (el cilindro):** el cilindro de latón de la caja, con todas sus púas, se suelta y cruza el suelo rodando a botes de pared a pared en 4 beats: aterriza en cada beat con un *THUMP!*, polvo y la pantalla temblando. La pantalla tiembla poco (no molesta). Antes traquetea en su pared y unas flechas en el suelo marcan por dónde vendrá. Hay que saltarlo (o estar en un cojín subido o en la plataforma giratoria). Sustituye a la ola de púas, que no se entendía como ataque.
+    - **kicks:** fouettés; en cada beat su pierna barre el suelo a 300 px a su alrededor.
+    - **moths:** polillas que salen de la tapa, una por beat; se espantan con C (cada una le quita un poco de cuerda: salen de sus costuras) o se esquivan.
+    - **bouquets:** ramos que caen donde está Tick (apuntan un beat antes); hay que apartarse.
+    - **minuet:** llamada y respuesta. Ella baila tres pasos (C, C, Z: teclas dibujadas junto a su cabeza, con "HER STEPS" y "step / step / turn" debajo, que se encienden en su beat) y después Tick los repite sobre su cabeza ("YOU!"), con un anillo que se cierra sobre la tecla que toca. Arriba lo explica: *MINUET! watch her three steps... then copy them* y *YOUR TURN! copy her steps on the beat: C C Z (jump)*. Cada paso a tiempo le quita tanta cuerda como una nota devuelta, y los tres seguidos dan un extra (*BRAVO!*); un paso que se escapa avisa al momento (*missed C!*). Mientras dura (de un beat antes de su primer paso al último de Tick) no hay ningún otro ataque: antes una nota o un giro caían justo en un paso y era imposible hacerlo bien. `every` separa los pasos (por defecto 1 beat; 2 para seguir el "STEP and STEP and TURN! Now you!" de la canción).
+    - **move:** un grand jeté a otro sitio del escenario; nunca aterriza a menos de 240 px de Tick.
+    - **hush:** la tapa se cierra y todo queda a oscuras.
+    - **cushions:** los cojines suben o bajan sobre sus muelles.
+    - **mirror:** su reflejo es **de cristal**: brillos que le pasan por encima en vez del óvalo de antes. Cada nota suya que le devuelves lo **agrieta** (*CRACK!*), y arriba se cuentan las grietas (0/3). A la tercera **se hace añicos** (*SHATTERED!*, cristales volando): un golpe grande a su cuerda, una frase suya ("My mirror! You BROKE my mirror!") y el espejo de la tapa queda roto, con sus grietas, hasta la siguiente vuelta: ya no saca su reflejo y sus notas "del espejo" salen del peine.
+      Antes: su reflejo sale del espejo de la tapa (`"out": true`) o vuelve a él (`"out": false`). Sale de espaldas, como se ve en el espejo, se desliza por la tapa, se da la vuelta a medio camino (un giro de papel) y baja flotando hasta el suelo, al otro lado del escenario. Fuera del espejo es una bailarina normal (no invertida), semitransparente y rodeada por un marco ovalado de espejo para distinguirla de la de verdad. Allí hace lo mismo que ella: gira el tutú a la vez y lanza las notas "del espejo" desde su mano, y esas notas vuelven a él. Sale en la tercera vuelta y vuelve al cristal cuando se cierra la tapa.
+  - **Qué vale como "abajo":** el giro del tutú, el barrido, el giro por el suelo y los fouettés alcanzan el suelo, la plataforma giratoria y los cojines bajados; solo libran un cojín subido o el aire. Las púas solo están en el suelo.
+  - **La plataforma giratoria** es otra plataforma: Tick puede subirse. Cuando gira, lo arrastra (el borde de delante va de derecha a izquierda): despacio cuando ella baila encima y durante el minueto, y muy deprisa en una pirueta, que lo tira abajo.
+    - **Paso a dos:** si Tick baila el minueto a su lado encima de la plataforma, cada paso le quita más cuerda (PAS DE DEUX!). La primera vez sale un aviso arriba.
+  - **Sus frases:** una tarjeta sobre su cabeza, con los labios moviéndose. Se burla cuando le das o cuando golpeas al aire, se pone nerviosa cuando le devuelves notas o le queda poca cuerda, presenta cada vuelta de llave, habla al sacar o guardar su reflejo, se sorprende con el primer paso a dos y, al final, dice "...You stayed." y "Nobody ever stayed to watch before." Las frases están en `LINES`, en `DuelScene.ts`.
+  - **Los cojines:** la plataforma no se mueve bajo los pies (solo el dibujo baila) y, si sube o baja, lleva a Tick encima. Son necesarios para los barridos y las notas altas.
+  - **Rendimiento:** las mangueras (brazos y piernas) se dibujan como un trazo continuo con tapas redondas, y los contornos sin un círculo en cada vértice (`src/rig/Ink.ts`). Antes cada brazo estampaba cientos de círculos en cada fotograma y el duelo, con la bailarina y su reflejo, bajaba a unos 5 fps.
+  - **Dash de Tick (SHIFT):** un impulso rápido con estela, uno en el suelo y uno por salto en el aire, con invulnerabilidad mientras dura (170 ms) y 0,45 s de recarga.
+  - **Tarjetas la primera vez:** la primera vez que aparece algo nuevo (las notas, la nota dorada, la nota alta, el barrido, el minueto, las polillas, el reflejo), el juego y la canción se paran (el AudioContext se suspende, y con él el reloj del duelo) y sale una tarjeta que lo explica; se sigue con Z o ENTER (tras 0,6 s, para que no se salte sin leer). Se guardan en `localStorage` (`timesend.duelTips`): no vuelven a salir. Los pilotos automáticos las tienen ya leídas.
+  - **Indicaciones:** las teclas salen abajo al principio y tras caer. Arriba se explica lo que toca (el minueto, el reflejo que sale del espejo: *it throws notes too: send them back (C) to it*).
+  - **Voltereta de Tick:** en el duelo (y en la vista previa de la caja) el segundo salto en el aire es una voltereta hacia delante, como las de los dibujos: se encoge abrazándose las rodillas (puños en las espinillas y ojos apretados), da una vuelta entera hecho una bola, rápido en el centro de la vuelta y con una estela, y se abre estirando las piernas para aterrizar. Sube un poco, cae más despacio y dura más en el aire. Durante la voltereta también se pueden devolver notas. Se dibuja a 24 fotogramas por segundo.
+  - **Vidas:** 3 en normal y 2 en difícil (`duelLives` en `difficulty.json`), cada una con 3 golpes.
+    - Perder una vida repite la vuelta de llave en la que estabas (*WIND IT BACK!*); perder la última reinicia el duelo desde la primera vuelta, con todas las vidas.
+    - Las vidas que quedan se ven como relojitos junto a la barra, y la tarjeta muestra cuánta cuerda le quitaste en total.
+    - Las únicas curas son las notas doradas (al empezar una vuelta ya no se recupera un golpe).
+  - **Coreografías densas:** cada sección superpone ataques (girar y devolver en el mismo beat, notas mientras barre el suelo, la caza con notas volando, ella y su reflejo lanzando a la vez); cada vuelta es más densa y rápida que la anterior.
+  - **Fases = vueltas de la llave:** cuando se acaba la cuerda, se da cuerda ("Click! Click! Wind me up again!") y el vals acelera: 93,6 → 103,4 → 117,1 bpm.
+  - **Final:** la melodía se frena hasta pararse, ella hace la última reverencia y habla, y sale la tarjeta *THAT'S ALL, FOLKS!* con el rango (S sin golpes y un combo de 15 o más; A sin golpes; B con un golpe; C el resto, o si repetiste alguna vuelta), los golpes, las notas devueltas, el mejor combo y el objeto encontrado. ENTER vuelve al Bijou (o al escenario de pruebas). Si pierdes, "THE END?" y ENTER repite la vuelta. Esc dos veces sale de la caja. F2 quita y pone las vidas.
+  - **Guardado:** al ganar se apunta el nivel con su rango, ella queda liberada (cuenta para el reloj y el órgano) y su objeto perdido va a la partida. Al entrar se guarda por dónde ibas, así que CONTINUAR vuelve a la caja.
+  - **Probado** con los pilotos automáticos de `tools/playtest/duel.cjs` (§11.8), tras hacerla implacable:
+    - **torpe** (±70 ms, 15 % de fallos): muere en la primera vuelta, con un 7 % y un 15 % del combate hecho (2 semillas);
+    - **humano** (±35 ms, 5 %): muere en la segunda vuelta (47 %) y en la tercera (72 %);
+    - **perfecto:** pasa la primera y la segunda vuelta sin golpes. La tercera, jugada sola, la gana con 2 golpes de la caza: el piloto aún salta tarde por encima de ella.
+    - También el recorrido completo desde el Bijou: abrir la caja, el duelo, la tarjeta final, el final en la sala y el guardado.
 
 **3. Mister Too-Late (las oportunidades perdidas).**
 - **Concepto:** un reloj de estación con gorra de jefe de estación y farol, que va siempre **un minuto tarde** (sus agujas están atascadas un minuto por detrás). Hace décadas dudó en el andén y perdió el tren: el tren que se llevaba a alguien, o su gran oportunidad. Desde entonces vive en el andén vacío y colecciona oportunidades perdidas en tarros: billetes sin usar, cartas sin abrir, anillos que nunca entregó. Ahora se asegura de que todo el mundo pierda el suyo.
@@ -344,10 +458,40 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
 *Conceptos anteriores aparcados* (podrían volver si encajan con el tema): Madame Gramola (descartada), Baron Bonejangle (esqueleto con costillar-xilófono), Captain Squidwhisker (integrado en el farero) y Mister Thunderhead (nube con chistera, nivel Vehicle).
 
 **Reglas de diseño de jefes:**
+- **Implacables** (pilar 3): *souls-like* + Cuphead + Billie Bust Up. El listón, medido con los pilotos automáticos (§11.8):
+  - el juego perfecto gana sin recibir golpes;
+  - el juego torpe (±70 ms, 15 % de reacciones perdidas) pierde, normalmente antes de la última fase;
+  - un buen jugador que lo prueba por primera vez (±35 ms, 5 %) suele perder y aprende los patrones.
+  - Cada fase es más densa que la anterior: más ataques por compás y ataques superpuestos (saltar y devolver en el mismo beat, notas mientras el suelo está cubierto, una persecución con notas volando).
 - Cada jefe tiene un **momento estrella** (un gag visual grande sincronizado con el clímax de la canción) que también es **su final** (§3).
 - Cada jefe encarna una cara del tiempo o de la soledad, y su mecánica la cuenta.
 - Cada jefe tiene un rasgo de silueta reconocible al instante (nada de "mancha negra con ojos": siluetas variadas).
 - Cada jefe tiene unas **líneas alternativas** de burla (cuando fallas) y de nervios (cuando vas bien).
+
+### Cómo se crea un jefe nuevo
+Cada jefe es **su propio nivel**, con su tipo de juego (Duel, Tower, Last Call…), su mundo, su cuerpo y sus eventos. Nada visible se copia del tren. Lo único compartido es el motor invisible: tempo y sincronía con la letra, cara y marioneta, peligros anclados a palabras, comprobador de justicia, marcas de ensayo y escenario de pruebas.
+
+Cuando se pide "crea el jefe X":
+1. **Ficha del jefe** (Claude): parte de esta sección. Se escriben la mecánica concreta, el momento estrella, los escenarios por partes de la canción y una lluvia de ideas de eventos ligados a su letra y a su mundo. Se aprueba antes de construir.
+2. **Lo que se pide al autor**, con los prompts ya escritos y adaptados al jefe:
+   - la hoja de piezas del personaje, según su cuerpo (ruedas, piernas, tutú, peana, cuerpo flotante…);
+   - las hojas de piezas de su decorado, una por escenario;
+   - los objetos propios de sus eventos;
+   - la canción y su letra. Si hace falta, Claude escribe la letra para que anuncie los eventos y prepara el prompt para la IA de música.
+3. **Lo que construye Claude:**
+   - el tipo de nivel, si es la primera vez que se usa;
+   - la marioneta con su cuerpo y sus gestos propios;
+   - los escenarios;
+   - los eventos;
+   - la sincronía con la canción;
+   - la comprobación.
+4. **Revisión:** hojas de fotogramas antes de dar cada paso, y la versión jugable en el enlace de pruebas.
+
+| Tipo de nivel | Estado |
+|---|---|
+| Chase | ✅ (Old Smokestack) |
+| Duel | ✅ Miss Pirouette (`src/scenes/DuelScene.ts`), jugable desde el Bijou, con su canción de Suno adaptada a lo que dure el combate |
+| Last Call, Tower, Call & Response, Lullaby, Vaudeville | por construir, con su primer jefe |
 
 ### Demo (alcance)
 - **Primero solo el Jefe 1, Old Smokestack (Chase)**, hasta pulirlo. Después, Miss Pirouette (Duel) y el resto.
@@ -384,7 +528,20 @@ Cada jefe encarna **una cara del tiempo o de la soledad**, tiene una mecánica q
   - "sixty cuckoo clocks" (152, 154): cucos saltando a la vía;
   - "I ran down a grandfather" (156): el péndulo del reloj de pie fantasma.
 
-  Todos se pasan saltando en el beat (comprobado jugando con las vidas activadas). Pendientes: depósito de agua y apagón en el solo de silencio, cambio de agujas, la llave de cuerda, relojes fantasma, semáforo con la nota congelada, parar el tiempo, el túnel a la escucha, el piano funerario y la carrera por el techo de los vagones.
+  Todos se pasan saltando en el beat (comprobado jugando con las vidas activadas). **Integrados en el ambiente:** nada aparece de golpe. El billete lo lanza el propio tren desde la cabina y el viento lo deja revoloteando sobre Tick; la picadora la maneja estirando su brazo de manguera; el paso a nivel, los cucos (clavados en los árboles muertos del cementerio) y el reloj de pie (una lápida-reloj del cementerio que se despierta, abre la puerta y saca el péndulo) llegan desde fuera de pantalla con el decorado.
+
+  Segunda tanda:
+  - **Cambio de agujas** (estribillo 1, 98–110): Tick pisa la palanca de un desvío del pueblo. El tren llega a las agujas, se queda atrás hasta salir de la pantalla por la izquierda y vuelve a entrar con un silbido por la vía del fondo, más pequeño, detrás de las casas. Al acabar la frase hace lo mismo al revés: sale de la pantalla y regresa por la vía principal. Nunca se le ve deslizarse de una vía a otra.
+  - **El depósito de agua** (solo de silencio, 138–146): el tren se para a beber en el depósito del pueblo (traga con cara de gusto, chorro en arco hasta la boca). Mientras la banda calla, Tick corre solo y el cuadro se oscurece. Al acabar, silbido, humo por las orejas y vuelve a toda prisa.
+  - **La llave de cuerda** ("I'll unwind your spring", 196–202): el brazo del tren alcanza la corona de Tick y le gira una llave al revés. La cuerda baja más rápido y se oye el carraspeo de la llave cada medio beat.
+  - **Los relojes fantasma** ("forty pocket-watches", 146.5 → puente): cinco fantasmas de relojes aplastados salen del cementerio y siguen a Tick dando saltitos al beat. Con cada golpe (las caídas también cuentan) se va uno. Los que siguen con él en el puente roto vuelan por delante y se aplanan como tablones sonrientes entre las palabras-piedra: escalones de más.
+
+  Tercera y cuarta tanda (con esto están los 14):
+  - **La señal en rojo** ("…here comes my favorite note…", 66): Tick llega a una señal de vía y el brazo cae a peligro. La canción se para como un disco al que le cortan la corriente: música, beat y cámara. El tren frena justo detrás de Tick y te mira fijamente. Silencio, solo el tic-tac, hasta que la señal se abre y llega el TOOT!. Si Tick se mueve mientras está en rojo (un paso, un salto, un dash), recibe un golpe.
+  - **El piano funerario** ("…played your funeral", 193–196): el piano cae justo detrás de Tick y toca su marcha fúnebre. Su teclado sale del hueco que hay delante y hace de puente. Las teclas se hunden con las notas de la marcha (193 y 195): hay que saltarlas en esa nota. Cada paso sobre una tecla suena.
+  - **Por los techos de los vagones** (estribillo 2, 212–222): tres vagones desbocados ruedan por la vía, más despacio que Tick. Se sube al primero de un salto (212) y salta los enganches (215, 219). El tren mira hacia atrás por encima del hombro. Fallar un salto es chocar contra el vagón siguiente.
+  - **Parar el tiempo** ("Tick-tock, little clock", embestida de 226): si Tick llega con una racha de 3 saltos a tiempo (los de los vagones), congela el tiempo un compás: destello, anillo de marcas de reloj, "TIME STOP!" y la imagen en gris de foto fija con el jefe a media palabra. Al volver, la embestida se queda en nada y el tren se lleva un susto. Sin racha, la embestida llega como siempre.
+  - **El túnel a la escucha** ("I can hear you tick-tick…", 277–282): en cada "tick-tick" el tren se lleva la mano a la oreja y Tick se mete en un nicho de la pared. Hay que no hacer nada: un salto o un dash en ese momento y el tren le oye (golpe). Durante toda la frase, el faro barre las paredes despacio, como un reflector. Sustituye a los tres huecos de medio beat que había ahí.
 - **El viaje** (§8.2b): la persecución pasa por seis escenarios mientras el reloj avanza de la tarde al amanecer:
 
   | Parte de la canción | Beats | Escenario | Hora |
@@ -482,11 +639,65 @@ Para que el nivel se sienta como un recorrido y no como un fondo que se repite, 
   - De noche la imagen se oscurece (el mismo filtro del túnel, más suave), pero Tick y el faro del tren siguen iluminando, y las colinas lejanas se vuelven siluetas.
   - De noche los ojos del jefe también brillan.
 - **Túneles de verdad:** si el nivel lo pide (`"tunnel": "brick"`), cada evento `tunnel` se convierte en un túnel con portal de piedra a la entrada, paredes de ladrillo, vigas de madera, faroles colgando que se balancean al ritmo y otro portal a la salida. Tick entra por el portal justo en el beat del evento.
+  - **Se ve de lado, como un corte de montaña de dibujo animado:**
+    - la montaña está delante del tren (roca dibujada, `rocktile`, recortada a su silueta y repasada con tinta), así que la chimenea y el sombrero se meten en la roca al entrar;
+    - el túnel está excavado en su pie a la altura de la vía (330 px de alto): las dos bocas llevan pilares y arco de dovelas de piedra;
+    - dentro se ven la pared del fondo de ladrillo, las vigas de madera de suelo a techo y los faroles colgando del techo de roca, todo en sombra.
+  - La pared de ladrillo dibujada se repite en las dos direcciones sin costura (`"tiles"` en `textures.json`), y la roca también (`"type": "tile"`).
 
 ### 8.3 Personajes dibujados: la marioneta por capas ✅ (prototipo con Old Smokestack)
 Sin animador, la forma más fluida de usar dibujos de verdad es una **marioneta**: el personaje se dibuja una sola vez, separado en piezas, y el código lo anima de forma continua, a 60 fotogramas por segundo.
-- **Lo que se dibuja (una hoja de piezas):** el cuerpo sin brazos y con la cara vacía, el sombrero, el bigote, tres guantes (abierto, puño, señalando) y una rueda. El prototipo actual está hecho con una IA de imágenes (`art/smokestack/parts.jpg`); el prompt está en el historial del proyecto y sirve para cualquier jefe.
-- **`npm run art -- <jefe>`** lee `art/<jefe>/art.json` (un punto dentro de cada pieza y las medidas del cuerpo: cara, ruedas, chimenea, hombros, suelo, morro). Recorta cada pieza, quita el fondo blanco, las amplía al doble y escribe `public/art/<jefe>/` con un `manifest.json`. El juego lo carga solo; `"bossArt": false` en `game.json` (o `?art=0` en la URL) vuelve al dibujo por código.
+- **Lo que se dibuja (una hoja de piezas):** el cuerpo sin brazos y con la cara vacía, el sombrero, el bigote, tres guantes (abierto, puño, señalando) y una rueda.
+  - **Guantes:** vemos el lado izquierdo del personaje, así que la mano de delante es una mano izquierda vista por la palma: los tres guantes deben tener el pulgar a la derecha. Si la IA dibuja alguno al revés, `"flip": ["gloveFist"]` en `art.json` lo invierte al recortarlo (en Smokestack, el puño y el que señala).
+  - En el juego, el guante solo gira, nunca se espeja, y gira de forma suave: al empezar un gesto nunca da la vuelta de golpe.
+  - **Lo que agarra:** con el brazo largo la mano siempre es un puño, y el objeto se coloca en el centro del puño, detrás del guante:
+    - las tenazas atraviesan el puño con las mandíbulas hacia abajo;
+    - la llave de cuerda se agarra por el ojo. El prototipo actual está hecho con una IA de imágenes (`art/smokestack/parts.jpg`); el prompt está en el historial del proyecto y sirve para cualquier jefe.
+- **Enemigo nuevo, de forma automática (una imagen y un comando):**
+  1. `npm run art -- new <id> --desc "qué es el personaje"` crea `art/<id>/` con `PROMPT.txt` (el prompt para la IA de imágenes, con las piezas en orden fijo: cuerpo sin brazos y con la cara vacía, sombrero, bigote, tres guantes y rueda) y `art.json`. Con `--no-wheel`, `--no-hat` o `--no-mustache` se quitan esas piezas.
+  2. Se le pasa `PROMPT.txt` a la IA y la imagen se guarda como `art/<id>/parts.png`.
+  3. `npm run art -- <id>` lo hace todo solo:
+     - recorta cada pieza y quita el fondo;
+     - las nombra por su orden en la hoja (el cuerpo es la más grande);
+     - encuentra la cara (el área clara y redonda de delante), el suelo, el morro, la parte de arriba (chimenea o cabeza) y las ruedas (círculos que tocan el suelo);
+     - escribe `public/art/<id>/` y dibuja `art/<id>/preview.png` para comprobar lo detectado.
+
+     Cualquier medida se puede forzar a mano en `art.json` (`"anchors"`).
+  4. `?puppet=<id>` en la URL abre el **visor de marionetas**: el personaje en 12 escenas a la vez (reposo, cantando a cámara, carcajada, mirada fija, lágrimas falsas, guiño, saludo, horario, aviso, embestida, susto, pánico). `←` y `→` cambian de personaje.
+- La misma clase de marioneta sirve para cualquier hoja (`new Smokestack(escena, '<id>')`); las ruedas, el sombrero, el bigote y los guantes son opcionales. `"bossArt": false` en `game.json` (o `?art=0`) vuelve al dibujo por código.
+- **Decorado y objetos dibujados con IA:** se piden con los prompts de `art/<jefe>/PROMPTS.md`, numerados (los de Smokestack son 17, más Tick aparte). Cada imagen se guarda como `art/<jefe>/NN.png` (o `.jpg`), y `art/<jefe>/textures.json` dice qué hay en cada una:
+  - **hoja de objetos:** nombres en orden de lectura;
+  - **tira de fondo:** un nombre.
+
+  `npm run art -- <jefe>` las recorta (`tools/art/slice_textures.py`) y deja `art/<jefe>/textures-preview.png` para comprobarlas.
+  - **Objetos:** se quita el blanco de alrededor y se reparten los trocitos sueltos.
+  - **Tiras:** se quita el blanco de encima y se cortan donde el perfil coincide en los dos extremos, para que se repitan sin costura.
+
+  El resultado va a `public/art/textures/`. Al arrancar, el juego usa cada imagen **en lugar del dibujo por código del mismo nombre** (`src/fx/artTextures.ts`):
+  - la ajusta a su sitio: las tiras, al ancho de la pantalla; el decorado, a su altura; los objetos que caen, a su caja;
+  - le añade los tres fotogramas de "línea viva" (un temblor suave, 8 veces por segundo).
+
+  Las imágenes que aún no estén se siguen dibujando por código.
+  - **Objetos de los eventos:** se cargan como `art:tex:<nombre>` y cada evento los usa si existen; si no, los dibuja por código.
+    - `piece()` en `src/entities/events.ts` crea la pieza girando sobre su punto marcado (`pivot`) y la escala por la distancia hasta `tip`.
+    - `piecePoint()` da dónde cae en pantalla otro punto marcado, por ejemplo la esfera del reloj o la bisagra de la palanca.
+  - **En Smokestack:**
+    - el tren sostiene el billete (con los agujeros dibujados encima), la picadora (abierta o cerrada) y la llave de cuerda (delante del puño, con el ojo de la llave estrechándose al girar);
+    - la barrera del paso a nivel gira sobre su bisagra y sale volando al pasar el tren;
+    - los árboles del cementerio llevan su reloj de cuco (en espejo, mirando a la vía) y el pájaro sale con un muelle desde la puerta;
+    - el reloj de pie despierta con ojos sobre su esfera en blanco, abre la puerta y balancea la bola dibujada (del tamaño de la zona que golpea);
+    - la palanca de agujas gira sobre su eje;
+    - los relojes fantasma se estiran en tablones en el puente.
+  - **Detalles del recortador:**
+    - si los dibujos se tocan (hierba a sus pies), lo reintenta con trazos más finos y, si hace falta, cortando por los huecos blancos;
+    - `"seeThrough"` vuelve transparentes los huecos blancos encerrados (entre las tablas de una valla);
+    - `"anchors"` marca puntos que el juego necesita, como el caño del depósito de agua (`"rightmost"`), que el evento usa para el chorro.
+  - **Tick** también está dibujado con IA (`art/tick/`, generado con Magnific): caja, corona, tres guantes y zapato. Se colocan sobre su esqueleto por código (`src/entities/Player.ts`, dibujado en capas: detrás, cuerpo y cara, delante). Los brazos y piernas de manguera y la cara de la esfera (ojos, bigote de agujas, boca) siguen siendo código y siguen animándose. Sin las imágenes, Tick se dibuja entero por código, como antes.
+  - **Smokestack:** las 17 hojas están hechas.
+    - 5 las hizo el autor: 4, 6, 7, 8 y 9.
+    - 12 se generaron con Magnific desde esta sesión (plan gratuito, 20 imágenes al día) y se revisaron una a una.
+    - La hoja `16b` rehace la picadora cerrada y la llave de cuerda, que habían salido mal.
+    - La red de la sesión no deja descargar el original de Magnific, así que se usa su copia de 1024 px.
 - **Cómo se anima (todo continuo, nada salta):**
   - **el cuerpo** es una malla (`Phaser.GameObjects.Mesh`) cuyos vértices pasan cada fotograma por la misma deformación de goma que el dibujo por código: respira, se estira en los acentos, se inclina al embestir y ondula al cantar;
   - **las ruedas** giran y la biela sigue a las manivelas;
@@ -718,11 +929,24 @@ Escenarios disponibles (`set`): `dusk` (campos secos), `town` (pueblo fantasma),
 | `shake` | `intensity` (0.01), `durationBeats` (1) | Sacudida de cámara |
 | `cue` | — | Punto de control: al perder se puede rebobinar al último que pasaste (§6.3) |
 | `silence` | `lengthBeats` | Solo de silencio: la banda calla durante `lengthBeats` y solo el tic-tac y los peligros marcan el beat (idea 9) |
-| `ticketCheck` | `count` (4), `spacingBeats` (2) | "Tickets, please": un billete aparece sobre Tick y cada salto a tempo en `beat`, `beat`+spacing… pica un agujero. Con un billete válido el tren se queda atrás unos compases |
+| `ticketCheck` | `count` (4), `spacingBeats` (2) | "Tickets, please": el tren lanza un billete que el viento deja revoloteando sobre Tick. Cada salto a tempo en `beat`, `beat`+spacing… le pica un agujero con la corona. Con un billete válido el tren se queda atrás unos compases; al sellarlo, el viento se lo lleva |
 | `holePunch` | `lengthBeats` (1), `biteBeats` (1.5) | Unas tenazas de picar billetes gigantes muerden la vía `biteBeats` antes de que Tick llegue en `beat`: un hueco que aparece de repente |
 | `crossing` | `count`, `spacingBeats` (2) | Paso a nivel: la barrera baja con la campana y está abajo cuando Tick llega en `beat` (y cada `spacingBeats`). Hay que saltarla; el tren la hace astillas |
 | `cuckoos` | `count`, `spacingBeats` (2) | Relojes de cuco en postes: el pájaro sale con un muelle a la vía en `beat`. Hay que saltarlo |
 | `pendulum` | — | El fantasma de un reloj de pie balancea el péndulo como un metrónomo; la bola pasa por el sitio de Tick justo después de `beat`. Hay que saltar en el beat |
+| `trackSwitch` | `lengthBeats` (12) | Cambio de agujas: una palanca junto a la vía; el tren sale de la pantalla hacia atrás, reaparece por la vía del fondo (allí no puede atrapar a Tick) y al final sale otra vez y regresa por la principal |
+| `waterStop` | `lengthBeats` (8) | El tren se para a beber en un depósito de agua y se queda atrás; el cuadro se oscurece mientras tanto. Vuelve con un silbido al acabar. Pensado para un `silence` |
+| `unwindKey` | `lengthBeats` (6), `drainPerBeat` (0.07) | El brazo del tren gira una llave en la corona de Tick: la cuerda baja `drainPerBeat` más por beat |
+| `redSignal` | `holdSec` (2.4) | Señal de vía delante de Tick: en `beat` cae a peligro y la canción se para (un calderón) `holdSec` segundos; el tren frena justo detrás. Moverse durante la parada es un golpe |
+| `timeStop` | `need` (4) | Premio en la embestida que culmina en `beat`: con una racha de `need` saltos a tiempo, Tick para el tiempo un compás y la embestida se anula |
+| `tunnelListen` | `listen` (lista de beats), `windowBeats` (0.9) | En la oscuridad el tren escucha: en cada beat de `listen` no se puede saltar ni hacer dash. El faro barre como un reflector |
+| `pianoKeys` | `lengthBeats`, `presses` (lista de beats) | Un teclado de piano sale de un hueco desde `beat`: las teclas son el suelo y en cada beat de `presses` se hunde la que Tick alcanza (hay que saltarla). Lleva debajo un `gap` del mismo largo |
+| `roofRun` | `count` (4), `carBeats` (2), `couplingBeats` (1), `speed` (0.3) | Vagones desbocados delante: Tick sube al primero en `beat` y salta cada enganche; los saltos caen en `beat` + i·(carBeats + couplingBeats) − couplingBeats |
+| `ghostWatches` | `count` (5), `bridgeBeat` (321) | Relojes fantasma que siguen a Tick; cada golpe espanta a uno. Los que quedan en `bridgeBeat` se vuelven escalones entre las palabras-plataforma que caen en los 14 beats siguientes |
+
+**Para los eventos (código):** un evento puede cambiar la velocidad de la canción con `ctx.setTempo(r)`: 1 es normal y 0 la congela, junto con el beat y la cámara (la cámara va tan rápido como suena la canción). También puede mover el haz del faro (`mods.beam`) y dejar que el tren se pegue a Tick sin atraparle (`mods.noCatch`). El jefe tiene `lungeCancelled` para anular una embestida.
+
+**Empezar desde una marca (§6.3) o con `?beat=`:** se crean también los eventos que deberían haber aparecido un poco antes y aún no han terminado (`beat` + `lengthBeats` por delante), así los decorados grandes llegan igual. Los relojes fantasma acompañan a Tick hasta el puente aunque se empiece después de que salgan del cementerio.
 
 ### 11.5 Comprobador de niveles (`npm run check`)
 Revisa cada nivel sin cambiarlo. Con `?debug=1`, el mismo informe sale en la consola del navegador.
@@ -771,11 +995,13 @@ Se dibujan como un **mapa ASCII**: una cadena por fila de casillas de 40 px (al 
   - `lostObject { id, name, text }`;
   - `wordLifeBeats`.
 - **Comprobación:** `npm run check` valida el mapa y comprueba con la física real de Tick que la meta, los fotogramas, los puntos de control y el objeto perdido se pueden alcanzar.
+- **Duelos** (`src/core/duelCheck.ts`): cada evento es de un tipo conocido y cae dentro de su sección, con opciones válidas (`from`, `to`, `up`, `dir`, `out`), y `encoreFrom` apunta a una sección que existe. Avisa si una fase no tiene nada que devolver.
 
 ### 11.7 `story.json`: los capítulos
 - **Generales:** `secondsPerBoss` (segundos que avanza el reloj por cada jefe liberado: 7), `intro` (las tarjetas de NEW GAME) y `previously` (el resumen al volver tras más de 3 días; admite `{frames}` y `{friends}`).
 - **`chapters[]`, uno por jefe:**
-  - `feature`: el nivel del jefe;
+  - `feature`: el nivel del jefe (una persecución de `game.json` → `levels`, o un duelo: `data/levels/<id>.json` con `"type": "duel"`, que se carga solo);
+  - `entry` (opcional): por dónde se entra al jefe. `"screen"` (por defecto) es la pantalla, con la bobina empalmada y enhebrada; `"lostfound"` es la caja de música de objetos perdidos, abierta desde el principio del capítulo;
   - `framesNeeded`;
   - `nowShowing` y `comingSoon`: los textos de la marquesina;
   - `interludes`: los niveles de plataformas;
@@ -784,6 +1010,20 @@ Se dibujan como un **mapa ASCII**: una cadena por fila de casillas de 40 px (al 
   - `endCards`.
 
 **Banda provisional (`placeholderMusic`)**: `key` (tonalidad, p. ej. `"G"`), `swing` (0.5 = sin swing, 0.62 = swing de jazz) y `sections`: lista de `{ name, bars, chords, intensity (1–3), train (true = percusión de tren), mood ("dark" = apagado) }`. Los acordes van en números romanos (`I`, `ii`, `IV`, `V7`, `vi`, `VI7`, `bVII`…), uno por compás.
+
+
+### 11.8 Probar un jefe: skills y agentes
+Cada vez que se avanza en un jefe se prueba entero, con las herramientas de `tools/playtest/` y unas skills y agentes del proyecto (en `.claude/`, que se guardan en el repositorio).
+- **`tools/playtest/duel.cjs`:** juega un duelo en un navegador real con un reloj virtual (rápido y siempre igual) y un piloto automático, y da un informe en JSON: resultado, fase alcanzada, progreso, golpes (qué, dónde y cuándo), muertes y errores de la página.
+  - **Modos:** `perfect` (todo en el beat), `human` (±35 ms, 5 % de fallos), `sloppy` (±70 ms, 15 %) y `events` (una captura de cada tipo de ataque, aviso y golpe, para revisarlas).
+  - **Opciones:** `--phase` empieza en otra vuelta, `--seed` repite una partida, `--retry` sigue tras morir y `--out` guarda capturas.
+- **`tools/playtest/sheet.py`:** junta capturas en una hoja con etiquetas para revisarlas de un vistazo.
+- **Skills** (`.claude/skills/`):
+  - **`boss-playtest`:** la dificultad, medida contra el listón de los jefes implacables.
+  - **`boss-visual-review`:** capturas de cada ataque y de las poses, revisadas con visión: avisos, legibilidad, textos que se pisan, que el personaje sea fiel a su hoja, movimiento (nada quieto que deba moverse) y estilo de los 30.
+  - **`boss-check`:** la pasada completa. Comprobaciones, pruebas y luego los dos agentes en paralelo, con un veredicto conjunto.
+- **Agentes** (`.claude/agents/`): `boss-difficulty-tester` y `boss-visual-reviewer`, que siguen esas skills.
+- **Pendiente:** las persecuciones (Old Smokestack) aún no tienen piloto automático; se prueban con `npm run check` y la revisión visual.
 
 ---
 

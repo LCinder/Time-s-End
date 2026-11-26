@@ -4,6 +4,7 @@
 import type {
   ControlsConfig,
   DifficultySpec,
+  DuelInfo,
   GameConfig,
   LevelData,
   LevelEvent,
@@ -85,6 +86,7 @@ export function validateGameConfig(raw: unknown): GameConfig {
     c.bool(o, 'vintageAudio', 'game');
     c.bool(o, 'debug', 'game');
     c.bool(o, 'bossArt', 'game', { optional: true });
+    c.bool(o, 'testStage', 'game', { optional: true });
     c.arr(o, 'levels', 'game');
     const film = c.obj(o.film, 'game.film');
     if (film) for (const k of ['grain', 'scratches', 'vignette', 'weave', 'flicker']) c.num(film, k, 'game.film', { min: 0, max: 3 });
@@ -119,6 +121,7 @@ export function validateDifficulties(raw: unknown): Record<string, DifficultySpe
       c.num(d, 'telegraphBeats', name, { min: 0.5, max: 8 });
       c.num(d, 'hazardSpeedMultiplier', name, { min: 0.25, max: 4 });
       c.num(d, 'bossLungeMultiplier', name, { min: 0, max: 4 });
+      if (d.duelLives !== undefined) c.num(d, 'duelLives', name, { min: 1, max: 9 });
     }
   }
   c.done();
@@ -157,7 +160,16 @@ export const EVENT_SCHEMAS: Record<string, { required: string[]; optional: strin
   holePunch: { required: [], optional: ['lengthBeats', 'biteBeats'], help: 'A giant ticket punch bites a hole in the track `biteBeats` (1.5) before the anchor reaches it on `beat`. Jump it like a gap.' },
   crossing: { required: [], optional: ['count', 'spacingBeats'], help: 'Level crossing(s): the barrier arm is down when Tick reaches it on `beat` (and every `spacingBeats`). Jump it.' },
   cuckoos: { required: [], optional: ['count', 'spacingBeats'], help: 'Cuckoo clocks on posts: the bird springs across the track on `beat` (and every `spacingBeats`). Jump it.' },
-  pendulum: { required: [], optional: ['count', 'spacingBeats'], help: "A ghost grandfather clock swings its pendulum through the track: the bob passes Tick's spot on `beat`. Jump it." },
+  pendulum: { required: [], optional: ['count', 'spacingBeats'], help: "A grandfather clock of the graveyard wakes up and swings its pendulum through the track: the bob passes Tick's spot just after `beat`. Jump it." },
+  waterStop: { required: ['lengthBeats'], optional: [], help: 'The train stops at a water tower and drinks for `lengthBeats` (it drifts back off the screen and the picture darkens); then it comes back at full steam. Pairs well with a silence solo.' },
+  trackSwitch: { required: ['lengthBeats'], optional: [], help: 'A points lever by the track on `beat`: the train is switched onto a far track (small, behind the scenery) for `lengthBeats`, then the tracks join again.' },
+  unwindKey: { required: [], optional: ['lengthBeats', 'drainPerBeat'], help: "The conductor sticks a giant key in Tick's crown and unwinds him from `beat` for `lengthBeats` (6): the spring drains `drainPerBeat` (0.07) extra; on-beat jumps wind it back." },
+  redSignal: { required: [], optional: ['holdSec'], help: 'A railway signal: as Tick reaches it on `beat` the arm drops and the song grinds to a stop (a fermata) for `holdSec` (2.4) seconds; the train brakes right behind him. Moving during the hold is a hit.' },
+  timeStop: { required: [], optional: ['need'], help: 'Reward on the boss charge peaking on `beat`: with a combo of `need` (4) or more, Tick stops time for a bar and the charge is called off.' },
+  tunnelListen: { required: ['listen'], optional: ['windowBeats'], help: 'In the dark the train listens: in each beat of `listen` (for `windowBeats`, 0.9) Tick must not jump or dash, or he is heard and hit. The headlamp sweeps like a searchlight.' },
+  pianoKeys: { required: ['lengthBeats', 'presses'], optional: [], help: 'A piano keyboard rises out of a gap from `beat` for `lengthBeats`: its keys are the floor, and on each beat in `presses` the key Tick reaches sinks (jump it). Put a gap of the same length under it.' },
+  roofRun: { required: [], optional: ['count', 'carBeats', 'couplingBeats', 'speed'], help: 'Runaway boxcars rolling ahead: Tick jumps onto the first on `beat` and over each coupling; car i is under him from `beat` + i·(carBeats 2 + couplingBeats 1). `speed` (0.3) is how fast they roll compared with Tick.' },
+  ghostWatches: { required: [], optional: ['count', 'bridgeBeat'], help: 'Ghost pocket-watches rise on `beat` and follow Tick (one leaves at every hit); the ones left at `bridgeBeat` become extra stepping stones between the word stones.' },
 };
 
 export function validateLevel(raw: unknown, file: string): LevelData {
@@ -405,6 +417,20 @@ export function validatePlatformLevel(raw: unknown, file: string): PlatformLevel
   return raw as PlatformLevel;
 }
 
+/** A duel level: just what the menus and the Bijou rely on (the duel checks its own events). */
+export function validateDuel(raw: unknown, file: string): DuelInfo {
+  const c = new Checker(file);
+  const o = c.obj(raw, 'level');
+  if (o) {
+    for (const k of ['id', 'title', 'subtitle']) c.str(o, k, 'level');
+    c.str(o, 'type', 'level', { oneOf: ['duel'] });
+    const ph = c.arr(o, 'phases', 'level');
+    if (ph && !ph.length) c.problems.push('level.phases: needs at least one phase');
+  }
+  c.done();
+  return raw as DuelInfo;
+}
+
 export function validateStory(raw: unknown, file: string): StoryData {
   const c = new Checker(file);
   const o = c.obj(raw, 'story');
@@ -421,6 +447,7 @@ export function validateStory(raw: unknown, file: string): StoryData {
       c.num(co, 'framesNeeded', p, { min: 0 });
       c.num(co, 'minigameFrames', p, { min: 0, max: 5 });
       c.str(co, 'organGift', p, { oneOf: ['train', 'none'] });
+      if (co.entry !== undefined) c.str(co, 'entry', p, { oneOf: ['screen', 'lostfound'] });
       c.arr(co, 'interludes', p);
       c.arr(co, 'endCards', p);
     });

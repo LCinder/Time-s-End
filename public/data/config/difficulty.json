@@ -7,7 +7,8 @@
     "onBeatDashBonusMs": 180,
     "telegraphBeats": 2,
     "hazardSpeedMultiplier": 1.0,
-    "bossLungeMultiplier": 1.0
+    "bossLungeMultiplier": 1.0,
+    "duelLives": 3
   },
   "hard": {
     "label": "HARD",
@@ -17,6 +18,7 @@
     "onBeatDashBonusMs": 120,
     "telegraphBeats": 1.5,
     "hazardSpeedMultiplier": 1.2,
-    "bossLungeMultiplier": 1.2
+    "bossLungeMultiplier": 1.2,
+    "duelLives": 2
   }
 }

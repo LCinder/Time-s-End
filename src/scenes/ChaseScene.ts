@@ -26,7 +26,7 @@ import { boilKey } from '../fx/Textures';
 import { Hud } from '../ui/Hud';
 import { LyricsUI } from '../ui/LyricsUI';
 import { Scenery } from '../world/Scenery';
-import { CrossingEvent, CuckooEvent, HolePunchEvent, PendulumEvent, TicketCheckEvent } from '../entities/events';
+import { CrossingEvent, CuckooEvent, GhostWatchesEvent, HolePunchEvent, PendulumEvent, TicketCheckEvent, TrackSwitchEvent, UnwindKeyEvent, WaterStopEvent, PianoKeysEvent, RedSignalEvent, RoofRunEvent, TimeStopEvent, TunnelListenEvent } from '../entities/events';
 import { SolidWorld } from '../world/Solids';
 import { Track } from '../world/Track';
 
@@ -71,6 +71,8 @@ export class ChaseScene extends Phaser.Scene {
   private beat = 0;
   private lastWholeBeat = -999;
   private hits = 0;
+  /** Every hit Tick takes, counted even in god mode (set pieces react to it). */
+  private hurtCount = 0;
   private combo = 0;
   private bestCombo = 0;
   private onBeatCount = 0;
@@ -83,6 +85,11 @@ export class ChaseScene extends Phaser.Scene {
   private overlay: Phaser.GameObjects.Container | null = null;
   private debugText: Phaser.GameObjects.Text | null = null;
   private godText: Phaser.GameObjects.Text | null = null;
+  /** What the set pieces do to the train and the picture (written by events every frame). */
+  private mods: ChaseCtx['mods'] = { away: 0, track: 0, extraDrain: 0, dim: 0, noCatch: false, beam: null };
+  /** Song speed set by the spring (slowing down when it runs out) and by set pieces (a fermata, time stop). */
+  private baseRate = 1;
+  private eventRate = 1;
   /** The last jump (for events that listen to the rhythm, like the ticket check). */
   private lastJump: { beat: number; label: string } | null = null;
   /** The train pushed back (a valid ticket): px at `from`, easing back in over `beats`. */
@@ -149,6 +156,9 @@ export class ChaseScene extends Phaser.Scene {
     this.pendingIdx = 0;
     this.state = 'loading';
     this.hits = 0;
+    this.hurtCount = 0;
+    this.baseRate = 1;
+    this.eventRate = 1;
     this.combo = 0;
     this.bestCombo = 0;
     this.onBeatCount = 0;
@@ -215,11 +225,16 @@ export class ChaseScene extends Phaser.Scene {
     this.hud = new Hud(this, Game.diff.playerHits);
 
     // events sorted by the moment they must appear
+    const lastsUntil = (e: LevelEvent): number =>
+      e.type === 'ghostWatches' ? Number(e.bridgeBeat ?? 321) + 16 : e.beat + Number(e.lengthBeats ?? 0);
     const instant = new Set(['gap', 'sign', 'tunnel']);
     this.pending = events
       .filter((e) => !instant.has(e.type))
       .map((e) => ({ e, spawn: spawnBeatOf(e, Game.diff) }))
-      .filter((p) => p.spawn >= this.startBeat - 0.01)
+      // starting from a cue mark: keep everything that hasn't happened yet, even if it should
+      // have appeared a little earlier (set pieces arrive with the scenery, well ahead); the
+      // ghost watches stay with Tick until the bridge, so practising the bridge has them too
+      .filter((p) => p.spawn >= this.startBeat - 0.01 || lastsUntil(p.e) >= this.startBeat)
       .sort((a, b) => a.spawn - b.spawn);
     // practice mode: if we start after the boss already ran off the cliff, keep that state
     const fall = events.find((e) => e.type === 'bossFall' && e.beat < this.startBeat);
@@ -255,14 +270,14 @@ export class ChaseScene extends Phaser.Scene {
       this.showDebug = !this.showDebug;
       this.debugText?.setVisible(this.showDebug);
     });
-    // testing: F2 makes Tick invincible (only with debug on, or after ?god=1)
+    // testing: F2 makes Tick invincible (only with debug on, after ?god=1 or from the test stage)
     this.godText = this.add
       .text(1268, 74, 'INVINCIBLE  (F2)', { fontFamily: 'monospace', fontSize: '15px', color: '#ffe9a8', backgroundColor: '#000000aa' })
       .setOrigin(1, 0)
       .setDepth(200)
       .setVisible(Game.invincible);
     this.input.keyboard?.on('keydown-F2', () => {
-      if (!Game.config.debug && !Game.invincible) return;
+      if (!Game.config.debug && !Game.invincible && Game.returnTo !== 'test') return;
       Game.invincible = !Game.invincible;
       this.godText?.setVisible(Game.invincible);
       this.showBanner(Game.invincible ? 'INVINCIBLE\nhits cost nothing' : 'HITS COUNT AGAIN', 1.2);
@@ -341,7 +356,8 @@ export class ChaseScene extends Phaser.Scene {
     const beat = this.beat;
     this.camX = beat * ppb;
     const spb = this.conductor.secondsPerBeat(Math.max(0, beat));
-    const camSpeed = ppb / spb;
+    // (the world moves as fast as the song plays: frozen in a fermata, slower when the spring runs down)
+    const camSpeed = (ppb / spb) * (this.state === 'play' ? this.conductor.rate : 1);
 
     const ctx = this.makeCtx(dt, time);
 
@@ -368,7 +384,7 @@ export class ChaseScene extends Phaser.Scene {
     this.updateBoss(dt, time, beat, camSpeed);
 
     // boss catches you
-    if (this.bossFallBeat === null && this.state === 'play') {
+    if (this.bossFallBeat === null && this.state === 'play' && this.mods.track < 0.1 && this.mods.away < 100 && !this.mods.noCatch) {
       const hb = this.player.hurtbox;
       if (hb.left - this.camX < this.boss.noseX - 12) {
         this.hurt('train');
@@ -390,7 +406,13 @@ export class ChaseScene extends Phaser.Scene {
       this.player.vx = camSpeed;
     }
 
-    // hazards
+    // hazards (the set pieces write this frame's train moves and dimming into `mods`)
+    this.mods.away = 0;
+    this.mods.track = 0;
+    this.mods.extraDrain = 0;
+    this.mods.dim = 0;
+    this.mods.noCatch = false;
+    this.mods.beam = null;
     this.hazards = this.hazards.filter((h) => {
       const alive = h.update(ctx);
       if (!alive) h.destroy();
@@ -448,6 +470,15 @@ export class ChaseScene extends Phaser.Scene {
       dust: (x, y, n) => this.dust(x, y, n),
       camXAtBeat: (b) => b * ppb,
       lastJump: this.lastJump,
+      hurts: this.hurtCount,
+      combo: this.combo,
+      setTempo: (r) => {
+        if (Math.abs(r - this.eventRate) < 1e-4) return;
+        this.eventRate = r;
+        this.applyRate();
+      },
+      events: this.level.events,
+      mods: this.mods,
       delayBoss: (px, beats) => {
         this.bossDelay = { px, from: this.beat, beats };
       },
@@ -467,6 +498,15 @@ export class ChaseScene extends Phaser.Scene {
       case 'crossing': this.hazards.push(new CrossingEvent(ctx, e)); break;
       case 'cuckoos': this.hazards.push(new CuckooEvent(ctx, e)); break;
       case 'pendulum': this.hazards.push(new PendulumEvent(ctx, e)); break;
+      case 'waterStop': this.hazards.push(new WaterStopEvent(ctx, e)); break;
+      case 'trackSwitch': this.hazards.push(new TrackSwitchEvent(ctx, e)); break;
+      case 'unwindKey': this.hazards.push(new UnwindKeyEvent(ctx, e)); break;
+      case 'ghostWatches': this.hazards.push(new GhostWatchesEvent(ctx, e)); break;
+      case 'redSignal': this.hazards.push(new RedSignalEvent(ctx, e)); break;
+      case 'timeStop': this.hazards.push(new TimeStopEvent(ctx, e)); break;
+      case 'tunnelListen': this.hazards.push(new TunnelListenEvent(ctx, e)); break;
+      case 'pianoKeys': this.hazards.push(new PianoKeysEvent(ctx, e)); break;
+      case 'roofRun': this.hazards.push(new RoofRunEvent(ctx, e)); break;
       case 'bossFall':
         this.bossFallBeat = e.beat;
         this.bossCrashBeat = typeof e.crashBeat === 'number' ? e.crashBeat : e.beat + 4;
@@ -639,7 +679,12 @@ export class ChaseScene extends Phaser.Scene {
       }
       b.setVisible(!this.bossCrashed);
     } else {
-      b.screenX = L.chase.bossFrontX + b.lunge - this.bossDelayNow(beat);
+      const k = this.mods.track;
+      b.screenX = L.chase.bossFrontX + b.lunge - this.bossDelayNow(beat) - this.mods.away + k * 150;
+      // on the far track (track switch): smaller, higher up, behind the near scenery
+      b.size = 1 - 0.45 * k;
+      b.groundY = GROUND_Y - 130 * k;
+      b.setDepth(k > 0.5 ? 7.5 : 40);
       const m = LyricsUI.mouthAt(this.lines, beat);
       b.mouth += (m.open - b.mouth) * Math.min(1, dt * 25);
       b.viseme = m.word ? visemeAt(m.word, m.f) : 'rest';
@@ -670,6 +715,7 @@ export class ChaseScene extends Phaser.Scene {
     if (ignoreInvuln && this.player.invulnerable > 0 && source !== 'fall') return;
     // testing (?god=1 / F2): everything reacts as usual, but the hit is not counted
     if (!Game.invincible) this.hits++;
+    this.hurtCount++;
     this.combo = 0;
     this.player.invulnerable = Game.config.player.invulnerableMs;
     sfx(source === 'fall' ? 'fall' : 'hit');
@@ -892,7 +938,7 @@ export class ChaseScene extends Phaser.Scene {
     }
     this.lyricsUI.setHidden(this.silences.some((si) => beat >= si.start && beat < si.end));
     // the spring runs down; empty, the world slows like a watch that stops
-    this.windSpring(-(beat - prevBeat) * this.springTune.drainPerBeat);
+    this.windSpring(-(beat - prevBeat) * (this.springTune.drainPerBeat + this.mods.extraDrain));
     if (this.spring <= 0 && this.slowUntilBeat === null) {
       const t = this.springTune;
       this.slowUntilBeat = beat + t.slowBeats;
@@ -913,7 +959,14 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   private setRate(rate: number): void {
+    this.baseRate = rate;
+    this.applyRate();
+  }
+
+  /** The spring's speed times the set piece's (a fermata stops the song: the music, the beat and the camera). */
+  private applyRate(): void {
     const now = AudioEngine.get().ctx.currentTime;
+    const rate = Math.max(0.001, this.baseRate * this.eventRate);
     this.conductor.setRate(rate, now);
     if (this.song instanceof FileSong) this.song.setRate(rate, now);
   }
@@ -1066,10 +1119,11 @@ export class ChaseScene extends Phaser.Scene {
     this.flash = Math.max(0, this.flash - dt * 2.5);
     f.flash = this.flash * (Game.settings.reduceFlicker ? 0.25 : 1);
     // the tunnel is pitch black; the night only dims the picture (lamps still cut through)
-    f.dark = Math.max(this.dark * 0.94, this.scenery.night * (this.level.scenery?.nightDark ?? 0.45));
+    f.dark = Math.max(this.dark * 0.94, this.scenery.night * (this.level.scenery?.nightDark ?? 0.45), this.mods.dim);
     f.light1 = { x: this.player.x - this.camX, y: this.player.y - 60, r: 190 };
     const lamp = this.boss.lamp;
-    f.light2 = { x: lamp.x + 280, y: lamp.y + 230, r: 330 };
+    // a set piece can swing the headlamp's beam round like a searchlight
+    f.light2 = this.mods.beam ?? { x: lamp.x + 280, y: lamp.y + 230, r: 330 };
     // in the dark, two burning eyes
     const eyes = this.boss.eyesPos;
     f.light3 = this.boss.dark > 0.3 && !this.bossCrashed ? { x: eyes.x, y: eyes.y, r: 80 } : { x: -9999, y: -9999, r: 1 };

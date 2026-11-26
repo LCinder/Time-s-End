@@ -30,8 +30,31 @@ export interface ChaseCtx {
   camXAtBeat: (beat: number) => number;
   /** The player's last jump: the beat it happened and whether it was on the beat. */
   lastJump: { beat: number; label: string } | null;
+  /** How many hits Tick has taken so far (falls included; counted in god mode too). */
+  hurts: number;
   /** Push the train back by `px`, easing back in over `beats`. */
   delayBoss: (px: number, beats: number) => void;
+  /** All the level's events (some set pieces look at others, e.g. the word stones). */
+  events: LevelEvent[];
+  /**
+   * Set by set pieces every frame (reset to 0 each frame): how far the train has dropped
+   * behind (px), how far onto the far track it is (0-1), extra spring drain per beat, and
+   * how dark the picture gets (0-1).
+   */
+  mods: {
+    away: number;
+    track: number;
+    extraDrain: number;
+    dim: number;
+    /** the train may come right up behind Tick without catching him (it brakes there) */
+    noCatch: boolean;
+    /** the headlamp's beam, moved by a set piece (screen x, y and radius), or null */
+    beam: { x: number; y: number; r: number } | null;
+  };
+  /** On-beat actions in a row so far. */
+  combo: number;
+  /** Set the song's speed for a set piece (1 normal, ~0 frozen): music, beat and camera together. */
+  setTempo: (rate: number) => void;
 }
 
 export interface Hazard {
@@ -484,6 +507,18 @@ export class LungeHazard implements Hazard {
   update(c: ChaseCtx): boolean {
     const b = c.beat;
     const boss = c.boss;
+    if (boss.lungeCancelled === this.peak) {
+      // called off: the train eases back where it was, still shaken
+      boss.charge = Math.max(0, boss.charge - c.dt * 3);
+      boss.lunge *= Math.max(0, 1 - c.dt * 4);
+      if (boss.lunge < 2) {
+        boss.lunge = 0;
+        boss.charge = 0;
+        boss.arm = 'idle';
+        return false;
+      }
+      return true;
+    }
     if (!this.announced) {
       this.announced = true;
       sfx('whistle');

@@ -95,6 +95,9 @@ export interface DifficultySpec {
   telegraphBeats: number;
   hazardSpeedMultiplier: number;
   bossLungeMultiplier: number;
+  /** Duels: lives for the whole fight. Losing one winds back the current turn of the key;
+   *  losing the last starts the fight over (default 3). */
+  duelLives?: number;
   /** Wind-up spring (MAIN.md idea 10); every field optional. */
   spring?: Partial<{ drainPerBeat: number; perfect: number; good: number; hit: number; slowRate: number; slowBeats: number }>;
 }
@@ -138,6 +141,8 @@ export interface GameConfig {
   levels: string[];
   /** Use the hand-drawn pose sheets in public/art/<boss>/ when they exist (`?art=0` in the URL turns it off). */
   bossArt?: boolean;
+  /** Show the test stage (T on the splash and the title, and a button on the title). Turn off for release. */
+  testStage?: boolean;
 }
 
 /** public/art/<boss>/manifest.json, written by `npm run art` from a sheet of puppet parts. */
@@ -223,7 +228,22 @@ export interface StoryChapter {
   minigameFrames: number;
   /** Instrument the freed boss gives the organ. */
   organGift: 'train' | 'none';
+  /** How Tick gets into the feature: the cinema screen (once the reel is mended and threaded,
+   *  the default) or the music box in the lost and found (open as soon as the chapter starts). */
+  entry?: 'screen' | 'lostfound';
   endCards: string[];
+}
+
+/** A duel level (data/levels/<id>.json, "type": "duel"): what the rest of the game needs to
+ *  know about it (the duel scene reads the whole file itself). */
+export interface DuelInfo {
+  id: string;
+  title: string;
+  subtitle: string;
+  type: 'duel';
+  era?: string;
+  lostObject?: { id: string; name: string; text: string };
+  phases: unknown[];
 }
 
 export interface StoryData {

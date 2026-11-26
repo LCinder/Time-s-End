@@ -55,6 +55,12 @@ export function generateTextures(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+/** Size of a code-drawn texture (so a hand-drawn replacement can take its place), if there is one. */
+export function textureSize(name: string): { w: number; h: number } | undefined {
+  const d = DEFS[name] ?? SCENERY_DEFS[name];
+  return d ? { w: d.w, h: d.h } : undefined;
+}
+
 /** Texture key for a boil frame at time t (seconds). */
 export function boilKey(name: string, t: number, offset = 0): string {
   return `${name}_${(Math.floor(t * 8) + offset) % BOIL_VARIANTS}`;

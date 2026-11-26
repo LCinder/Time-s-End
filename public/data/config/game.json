@@ -8,6 +8,7 @@
   "vintageAudio": true,
   "debug": false,
   "bossArt": true,
+  "testStage": true,
   "levels": ["smokestack"],
   "film": {
     "grain": 1.0,

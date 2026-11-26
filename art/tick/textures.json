@@ -1,0 +1,6 @@
+{
+  "comment": "Tick, the hero, as hand-drawn pieces (made with Magnific): the game puts them on his code-drawn rig (the rubber-hose arms and legs, the face on the dial). Save the sheet as art/tick/01.jpg and run: npm run art -- tick",
+  "sheets": [
+    {"file": "01", "type": "objects", "names": ["tickBody", "tickCrown", "tickGloveOpen", "tickGloveFist", "tickGlovePoint", "tickShoe"]}
+  ]
+}

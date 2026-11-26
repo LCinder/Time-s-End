@@ -84,6 +84,21 @@ export const EXPRESSIONS: Record<string, Partial<FaceParams>> = {
   glee: { browL: 0.9, browR: 0.9, angL: 0.3, angR: 0.3, lidL: 0.05, lidR: 0.05, eye: 1.12, pupil: 0.65, smile: 0.9, width: 1.2, open: 0.35, teeth: 1, fangs: 1, cheek: 0.7, lowL: 0.2, lowR: 0.2 },
   /** listening hard */
   listen: { browL: 0.8, browR: -0.2, angL: -0.3, angR: 0.7, lidL: 0.2, lidR: 0.45, smile: 0.2, skew: 0.5, gazeX: 0.8 },
+  /** gulping water: eyes shut with pleasure, cheeks puffed, lips round */
+  gulp: { browL: 0.4, browR: 0.4, lidL: 1, lidR: 1, cheek: 1, open: 0.3, width: 0.5, smile: 0.1 },
+  // ── Miss Pirouette (a lady: small painted mouth, lashes, no fangs) ──
+  /** haughty: chin up, lids lowered, a superior little smile */
+  haughty: { browL: 0.6, browR: 0.6, angL: -0.1, angR: -0.1, lidL: 0.55, lidR: 0.55, smile: 0.3, width: 0.6, gazeY: 0.25, pupil: 0.85 },
+  /** coy: a sidelong look and a pursed smile */
+  coy: { browL: 0.5, browR: 0.2, angL: -0.2, lidL: 0.35, lidR: 0.45, smile: 0.45, width: 0.5, skew: 0.4, gazeX: 0.7, lowL: 0.15, lowR: 0.15, cheek: 0.3 },
+  /** pout: offended */
+  pout: { browL: -0.2, browR: 0.5, angL: 0.6, angR: -0.3, lidL: 0.4, lidR: 0.3, smile: -0.5, width: 0.45, open: 0.06, gazeX: -0.4 },
+  /** a dainty laugh behind the hand: eyes shut, a little round mouth */
+  titter: { browL: 0.6, browR: 0.6, angL: -0.2, angR: -0.2, lidL: 1, lidR: 1, smile: 0.6, width: 0.55, open: 0.35, cheek: 0.8 },
+  /** singing out, eyes up to the gallery */
+  diva: { browL: 0.9, browR: 0.9, angL: -0.4, angR: -0.4, lidL: 0.3, lidR: 0.3, open: 0.6, width: 0.6, smile: 0.2, gazeY: -0.6 },
+  /** tender at last: soft eyes, a real smile */
+  tender: { browL: 0.5, browR: 0.5, angL: -0.6, angR: -0.6, lidL: 0.35, lidR: 0.35, lowL: 0.25, lowR: 0.25, smile: 0.5, width: 0.55, pupil: 1.3, cheek: 0.5 },
   /** looking back over his shoulder, suspicious */
   suspicious: { browL: -0.2, browR: 0.5, angL: 0.8, angR: 0.3, lidL: 0.55, lidR: 0.5, pupil: 0.7, smile: -0.2, skew: -0.4, gazeX: -1 },
 };
@@ -117,6 +132,11 @@ export interface FaceStyle {
   /** Height of the eyes and of the mouth (defaults -30 and 46); a big moustache wants the mouth lower. */
   eyeY?: number;
   mouthY?: number;
+  /** A lady's face: long lashes on the upper lids, painted lips (this colour), a smaller mouth. */
+  lashes?: boolean;
+  lips?: number;
+  /** Eyes closer together (distance from the middle; default 34). */
+  eyeX?: number;
 }
 
 const MOUTH = 0x2a0a0a;
@@ -124,8 +144,8 @@ const TONGUE = 0x9a3a3a;
 
 /** Draw the face at (cx, cy); the ink's warp maps it onto the character. */
 export function drawFace(k: Ink, cx: number, cy: number, p: FaceParams, style: FaceStyle): void {
-  for (const side of [-1, 1] as const) drawEye(k, cx + side * 34, cy + (style.eyeY ?? -30), side, p, style);
-  drawMouth(k, cx, cy + (style.mouthY ?? 46), p);
+  for (const side of [-1, 1] as const) drawEye(k, cx + side * (style.eyeX ?? 34), cy + (style.eyeY ?? -30), side, p, style);
+  drawMouth(k, cx, cy + (style.mouthY ?? 46), p, style.lips);
   // cheeks pushed up by a grin
   if (p.cheek > 0.15) {
     for (const side of [-1, 1]) {
@@ -199,11 +219,22 @@ function drawEye(k: Ink, ex: number, ey: number, side: -1 | 1, p: FaceParams, st
   }
 
   // heavy lid line along the top of the opening, and the lower lid when the cheeks push up
-  if (lid > 0.08) k.hose(ex - rx - 2, upper(ex - rx), ex, upper(ex) - 1, ex + rx + 2, upper(ex + rx), 5 + lid * 4);
+  if (lid > 0.08 || style.lashes) k.hose(ex - rx - 2, upper(ex - rx), ex, upper(ex) - 1, ex + rx + 2, upper(ex + rx), 5 + lid * 4);
+  if (style.lashes) drawLashes(k, ex, rx, side, upper);
   if (low > 0.12) k.hose(ex - rx * 0.9, lower(ex - rx * 0.9), ex, lower(ex) + 2, ex + rx * 0.9, lower(ex + rx * 0.9), 3 + low * 3);
 }
 
-function drawMouth(k: Ink, mx: number, my: number, p: FaceParams): void {
+/** Three long curled lashes at the outer end of the upper lid. */
+function drawLashes(k: Ink, ex: number, rx: number, side: -1 | 1, upper: (x: number) => number): void {
+  for (let i = 0; i < 3; i++) {
+    const x = ex + side * rx * (0.35 + i * 0.3);
+    const y = upper(x) - 1;
+    const len = 9 + i * 3;
+    k.hose(x, y, x + side * len * 0.4, y - len * 0.8, x + side * len, y - len * 0.9, 3);
+  }
+}
+
+function drawMouth(k: Ink, mx: number, my: number, p: FaceParams, lips?: number): void {
   const w = 34 * p.width;
   const lift = p.smile * 13;
   const lc = { x: mx - w, y: my - lift + p.skew * 9 };
@@ -227,6 +258,8 @@ function drawMouth(k: Ink, mx: number, my: number, p: FaceParams): void {
   if (opening) {
     const mouth = [...top, ...bot];
     k.shape(mouth, MOUTH, 0);
+    // painted lips: a dark rim round the open mouth
+    if (lips !== undefined) k.shape(mouth, null, 9, lips);
     // tongue at the bottom of a wide-open mouth
     if (p.open > 0.35) k.ellipse(mx, lowerMid.y - openH * 0.2, w * 0.45, openH * 0.22, TONGUE, 0);
     // teeth: a white band under the upper lip (gritted when the mouth is nearly shut)
@@ -243,8 +276,15 @@ function drawMouth(k: Ink, mx: number, my: number, p: FaceParams): void {
     }
     k.shape(mouth, null, 4);
   } else {
-    // closed: the lip line (a sneer when skewed)
-    k.hose(lc.x, lc.y, upperMid.x, upperMid.y + 4 - p.smile * 2, rc.x, rc.y, 7);
+    // closed: the lip line (a sneer when skewed); painted lips are a little cupid's bow
+    if (lips !== undefined) {
+      const mid = upperMid.y + 4 - p.smile * 2;
+      k.shape(
+        [lc, { x: mx - w * 0.45, y: mid - 7 }, { x: mx, y: mid - 2 }, { x: mx + w * 0.45, y: mid - 7 }, rc, { x: mx + w * 0.3, y: mid + 8 }, { x: mx - w * 0.3, y: mid + 8 }],
+        lips,
+        3,
+      );
+    } else k.hose(lc.x, lc.y, upperMid.x, upperMid.y + 4 - p.smile * 2, rc.x, rc.y, 7);
   }
   // fangs hang from the upper lip near the corners
   if (p.fangs > 0.15) {

@@ -31,6 +31,9 @@ export function leaveLevel(scene: Phaser.Scene, levelId: string, info: { complet
     case 'programme':
       scene.scene.start('Programme');
       break;
+    case 'test':
+      scene.scene.start('Test', { page: levelId });
+      break;
     default:
       scene.scene.start('Title');
   }

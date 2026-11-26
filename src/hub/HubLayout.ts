@@ -53,7 +53,7 @@ export const HUB_OBJECTS: HubObject[] = [
   // lobby
   { id: 'stairs-lobby', kind: 'stairsLobby', col: 2, floor: FLOOR.lobby, label: 'STAIRS' },
   { id: 'darkroom', kind: 'darkroom', col: 5, floor: FLOOR.lobby, label: 'DARKROOM' },
-  { id: 'lostfound', kind: 'lostfound', col: 8, floor: FLOOR.lobby, label: 'LOST & FOUND' },
+  { id: 'lostfound', kind: 'lostfound', col: 8, floor: FLOOR.lobby, label: 'LOST & FOUND', level: 'pirouette' },
   { id: 'mirror', kind: 'mirror', col: 10, floor: FLOOR.lobby, label: 'MIRROR' },
   { id: 'clock', kind: 'clock', col: 13, floor: FLOOR.lobby, label: 'GRANDFATHER CLOCK' },
   { id: 'poster-news', kind: 'poster', col: 16, floor: FLOOR.lobby, label: 'BIJOU NEWS', level: 'newsreel-1' },

@@ -24,6 +24,8 @@ export interface PlayerEnv {
   autoRun: boolean;
   minX: number;
   maxX: number;
+  /** A second jump in the air becomes a forward somersault that hangs longer (the duels). */
+  allowFlip?: boolean;
 }
 
 const BRASS = 0xc9a24a;
@@ -37,12 +39,16 @@ export class Player {
   readonly w = 40;
   readonly h = 100;
   onGround = false;
+  /** 0 … 1 through a forward somersault (a jump in the air), or -1 */
+  flip = -1;
+  private flipUsed = false;
   facing = 1;
   private coyote = 0;
   private jumpBuffer = 0;
   private jumpCut = false;
   private dashTime = 0;
   private dashCooldown = 0;
+  private airDashUsed = false;
   invulnerable = 0;
   private squash = 1;
   private runPhase = 0;
@@ -67,15 +73,79 @@ export class Player {
   onLand?: (hard: boolean) => void;
   onJump?: () => void;
 
-  readonly gfx: Phaser.GameObjects.Graphics;
+  /** Tick as a whole (move, scale, hide it); inside, the drawing in layers. */
+  readonly gfx: Phaser.GameObjects.Container;
   private ink: Ink;
+  /** behind the body (the far arm and leg, the pendulum), the body and face, in front (the near limbs) */
+  private gBack: Phaser.GameObjects.Graphics;
+  private gFace: Phaser.GameObjects.Graphics;
+  private gFront: Phaser.GameObjects.Graphics;
+  /** The hand-drawn pieces (`npm run art -- tick`), when there are pictures of them. */
+  private skin: {
+    body: Phaser.GameObjects.Image;
+    crown: Phaser.GameObjects.Image;
+    gloves: Phaser.GameObjects.Image[];
+    shoes: Phaser.GameObjects.Image[];
+  } | null = null;
+
+  /** A copy of a texture shrunk to `w` px wide in halving steps (smooth, no jagged edges). */
+  static smooth(scene: Phaser.Scene, key: string, w: number): string {
+    const k = `${key}@${w}`;
+    if (scene.textures.exists(k)) return k;
+    if (!scene.textures.exists(key)) return key;
+    const src = scene.textures.get(key).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    if (src.width <= w) return key;
+    let cur: HTMLImageElement | HTMLCanvasElement = src;
+    let cw = src.width;
+    let ch = src.height;
+    const step = (nw: number, nh: number): void => {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(nw));
+      c.height = Math.max(1, Math.round(nh));
+      const x = c.getContext('2d');
+      if (!x) return;
+      x.imageSmoothingEnabled = true;
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(cur, 0, 0, c.width, c.height);
+      cur = c;
+      cw = c.width;
+      ch = c.height;
+    };
+    while (cw / 2 >= w) step(cw / 2, ch / 2);
+    step(w, (ch * w) / cw);
+    scene.textures.addCanvas(k, cur as HTMLCanvasElement);
+    return k;
+  }
 
   constructor(scene: Phaser.Scene, x: number, y: number, private tune: PlayerTuning) {
     this.x = x;
     this.y = y;
-    this.gfx = scene.add.graphics();
-    this.gfx.setDepth(50);
-    this.ink = new Ink(this.gfx);
+    this.gBack = scene.add.graphics();
+    this.gFace = scene.add.graphics();
+    this.gFront = scene.add.graphics();
+    this.ink = new Ink(this.gBack);
+    const has = (k: string) => scene.textures.exists(`art:tex:${k}`);
+    const layers: Phaser.GameObjects.GameObject[] = [this.gBack];
+    if (has('tickBody') && has('tickCrown') && has('tickGloveOpen') && has('tickShoe')) {
+      // (each part from a copy shrunk smoothly to about three times its size on screen: drawn
+      // eight to twelve times smaller straight from the big picture, it came out jagged)
+      const SIZE: Record<string, number> = { tickBody: 210, tickCrown: 66, tickShoe: 102, tickGloveOpen: 66, tickGloveFist: 66, tickGlovePoint: 66 };
+      const img = (k: string, ox: number, oy: number) => scene.add.image(0, 0, Player.smooth(scene, `art:tex:${k}`, SIZE[k] ?? 128)).setOrigin(ox, oy);
+      const bodyTex = scene.textures.get(Player.smooth(scene, 'art:tex:tickBody', SIZE.tickBody)).getSourceImage() as HTMLCanvasElement;
+      // the case is a circle as wide as the picture, at its bottom (the knob for the crown on top)
+      const body = img('tickBody', 0.5, (bodyTex.height - bodyTex.width / 2) / bodyTex.height);
+      body.setScale(70 / bodyTex.width);
+      const crown = img('tickCrown', 0.5, 1);
+      crown.setScale(22 / crown.height);
+      const gloves = [img('tickGloveOpen', 0.5, 0.82), img('tickGloveOpen', 0.5, 0.82)];
+      const shoes = [img('tickShoe', 0.4, 0.92), img('tickShoe', 0.4, 0.92)];
+      for (const s of shoes) s.setScale(34 / s.width);
+      this.skin = { body, crown, gloves, shoes };
+      layers.push(shoes[0], gloves[0], crown, body);
+    }
+    layers.push(this.gFace, this.gFront);
+    if (this.skin) layers.push(this.skin.shoes[1], this.skin.gloves[1]);
+    this.gfx = scene.add.container(0, 0, layers).setDepth(50);
   }
 
   get isDashing(): boolean {
@@ -113,7 +183,9 @@ export class Player {
     this.idleTime = this.onGround && c.dir === 0 && Math.abs(this.vx) < 20 && !c.jumpPressed && !c.dashPressed ? this.idleTime + dt : 0;
 
     // dash
-    if (c.dashPressed && this.dashCooldown <= 0) {
+    // (once on the ground or once per jump: an air dash, as in the cartoons)
+    if (c.dashPressed && this.dashCooldown <= 0 && (this.onGround || !this.airDashUsed)) {
+      if (!this.onGround) this.airDashUsed = true;
       this.smearT = 0.1;
       this.drawTimer = 0;
       this.dashTime = T.dashMs;
@@ -144,13 +216,33 @@ export class Player {
       this.mouthOpen = 1;
       this.onJump?.();
     }
+    else if (this.jumpBuffer > 0 && env.allowFlip && !this.onGround && !this.flipUsed && this.flip < 0) {
+      // a jump in the air: a forward somersault, a new lift and a slower fall while it lasts
+      this.flipUsed = true;
+      this.flip = 0;
+      this.vy = -T.jumpVelocity * 0.78;
+      this.vx += this.facing * 90;
+      this.jumpBuffer = 0;
+      this.jumpCut = true;
+      this.squash = 1.2;
+      this.onJump?.();
+    }
+    if (this.onGround) {
+      this.airDashUsed = false;
+      this.flipUsed = false;
+      this.flip = -1;
+    }
+    if (this.flip >= 0) {
+      this.flip += dt / 0.55;
+      if (this.flip >= 1) this.flip = -1;
+    }
     if (!c.jumpHeld && this.vy < 0 && !this.jumpCut) {
       this.vy *= T.jumpCutMultiplier;
       this.jumpCut = true;
     }
 
     // gravity (floaty during dash)
-    if (this.dashTime <= 0) this.vy = Math.min(this.vy + T.gravity * dt, 1700);
+    if (this.dashTime <= 0) this.vy = Math.min(this.vy + T.gravity * (this.flip >= 0 ? 0.62 : 1) * dt, 1700);
 
     this.moveX(this.vx * dt, env);
     const wasGround = this.onGround;
@@ -275,24 +367,52 @@ export class Player {
     this.act.update(dt, beat, { look, singing: false, accent: this.accentNow, nervous: this.startleT > 0 ? 1 : 0, idle });
     this.accentNow = false;
     this.gfx.setRotation(idle || this.accentT > 0 ? this.act.tilt * 0.8 : 0);
+    if (this.flip >= 0) {
+      // the somersault (like a cartoon tuck): he curls up hugging his knees, goes round once,
+      // fast in the middle of the turn, round the middle of his tucked body, and opens out to land
+      const f = Phaser.Math.Clamp((this.flip - 0.06) / 0.8, 0, 1);
+      const e = f * f * f * (f * (f * 6 - 15) + 10);
+      const a = this.facing * e * Math.PI * 2;
+      const u = this.tuck();
+      const cy = -58;
+      this.gfx.setRotation(a);
+      this.gfx.setPosition(this.x - camX + cy * Math.sin(a), this.y + cy - Math.cos(a) * cy);
+      // a ball: a touch wider and shorter when fully tucked
+      this.gfx.setScale(this.gfx.scaleX * (1 + 0.05 * u), this.gfx.scaleY * (1 - 0.1 * u));
+    }
     const flashing = this.invulnerable > 0 && Math.floor(time * 12) % 2 === 0;
     this.gfx.setAlpha(this.dead ? 1 : flashing ? 0.35 : 1);
     this.drawTimer -= dt;
     if (this.drawTimer > 0) return;
-    this.drawTimer = 1 / 12;
+    // (the somersault is drawn twice as often: the curl and the opening out must be smooth)
+    this.drawTimer = this.flip >= 0 ? 1 / 24 : 1 / 12;
     this.ink.seed = Math.floor(time * 12) % 3;
     this.paint(beat, time);
   }
 
+  /** How tucked he is during the somersault: curls up quickly, holds, opens out to land. */
+  private tuck(): number {
+    if (this.flip < 0) return 0;
+    const t = this.flip;
+    const u = t < 0.14 ? t / 0.14 : t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+    const c = Phaser.Math.Clamp(u, 0, 1);
+    return c * c * (3 - 2 * c);
+  }
+
   private paint(beat: number, time: number): void {
     const k = this.ink;
-    const g = this.gfx;
-    g.clear();
+    this.gBack.clear();
+    this.gFace.clear();
+    this.gFront.clear();
+    k.g = this.gBack;
+    let g = this.gBack;
+    const skin = this.skin;
     const air = !this.onGround;
     const ph = this.runPhase;
     const bob = air ? 0 : -Math.abs(Math.sin(ph)) * 4;
     const bodyY = -64 + bob;
     const dashing = this.dashTime > 0;
+    const tk = this.tuck();
 
     // legs
     const legs = [-1, 1].map((side) => {
@@ -316,14 +436,28 @@ export class Player {
         fx = Math.sin(p) * 20;
         fy = -Math.max(0, Math.cos(p)) * 14;
       }
-      return { side, hipX, hipY, fx, fy };
+      // the knee (the hose's bend): halfway, pushed forwards
+      let kx = (hipX + fx) / 2 + 9;
+      let ky = (hipY + fy) / 2;
+      if (tk > 0) {
+        // tucked: knees up at his chest, shins folded back, feet tucked under the case
+        const tkx = hipX + 30 + side * 2;
+        const tky = hipY - 22;
+        const tfx = hipX + 12 + side * 3;
+        const tfy = hipY + 8;
+        kx += (tkx - kx) * tk;
+        ky += (tky - ky) * tk;
+        fx += (tfx - fx) * tk;
+        fy += (tfy - fy) * tk;
+      }
+      return { side, hipX, hipY, fx, fy, kx, ky };
     });
 
-    const drawLeg = (l: (typeof legs)[number]): void => {
-      const cx = (l.hipX + l.fx) / 2 + 9;
-      const cy = (l.hipY + l.fy) / 2;
-      k.hose(l.hipX, l.hipY, cx, cy, l.fx, l.fy - 4, 7);
-      k.shoe(l.fx, l.fy, 16, 1);
+    const drawLeg = (l: (typeof legs)[number], i: number): void => {
+      k.hose(l.hipX, l.hipY, l.kx, l.ky, l.fx, l.fy - 4, 7);
+      // tucked, the sole turns up under him
+      if (skin) skin.shoes[i].setPosition(l.fx, l.fy + 1).setRotation(air ? -0.15 - tk * 2.4 : 0);
+      else k.shoe(l.fx, l.fy, 16, 1);
     };
 
     // arms
@@ -353,13 +487,32 @@ export class Player {
         hx = sx + Math.sin(p) * 18;
         hy = sy + 22;
       }
+      if (tk > 0) {
+        // tucked: both hands round the knees (fists gripping the shins)
+        const thx = 34 + side * 3;
+        const thy = bodyY + 20;
+        hx += (thx - hx) * tk;
+        hy += (thy - hy) * tk;
+      }
       return { side, sx, sy, hx, hy };
     });
-    const drawArm = (a: (typeof arms)[number]): void => {
-      const cx = (a.sx + a.hx) / 2 + a.side * 6;
-      const cy = (a.sy + a.hy) / 2 + 6;
+    const drawArm = (a: (typeof arms)[number], i: number): void => {
+      // (tucked, the elbows bow out round the knees)
+      const cx = (a.sx + a.hx) / 2 + a.side * 6 + tk * 10;
+      const cy = (a.sy + a.hy) / 2 + 6 - tk * 8 * a.side;
       k.hose(a.sx, a.sy, cx, cy, a.hx, a.hy, 6);
-      k.glove(a.hx, a.hy, 8, Math.atan2(a.hy - cy, a.hx - cx));
+      const angle = Math.atan2(a.hy - cy, a.hx - cx);
+      if (skin) {
+        // a fist when dashing, a pointing finger on the ta-da, an open glove the rest of the time
+        const kind = dashing || tk > 0.5 ? 'tickGloveFist' : this.accentT > 0 && i === 1 ? 'tickGlovePoint' : 'tickGloveOpen';
+        const gl = skin.gloves[i];
+        const key = Player.smooth(this.gfx.scene, `art:tex:${kind}`, 66);
+        if (gl.texture.key !== key) gl.setTexture(key);
+        // the texture is a right hand seen from the palm (thumb on its right): his right hand (on
+        // the left of the drawing, he faces us) wears it as drawn, his left one mirrored
+        gl.setFlipX(i === 1);
+        gl.setPosition(a.hx, a.hy).setRotation(angle + Math.PI / 2).setScale(22 / gl.height);
+      } else k.glove(a.hx, a.hy, 8, angle);
     };
 
     // smear: speed lines and afterimages trailing a dash
@@ -369,8 +522,23 @@ export class Player {
       g.fillStyle(CASE, 0.12).fillCircle(-58, bodyY, 28);
     }
 
-    drawArm(arms[0]);
-    drawLeg(legs[0]);
+    // the somersault's swoosh: arcs trailing the top of the ball as it goes round
+    if (tk > 0.3) {
+      for (let i = 0; i < 2; i++) {
+        const r = 46 + i * 9;
+        g.lineStyle(5 - i * 2, 0xffffff, (tk - 0.3) * (0.9 - i * 0.35));
+        g.beginPath();
+        g.arc(0, bodyY + 6, r, -Math.PI / 2 - 2.3, -Math.PI / 2 - 0.25, false);
+        g.strokePath();
+        g.lineStyle(2, INK, (tk - 0.3) * 0.6);
+        g.beginPath();
+        g.arc(0, bodyY + 6, r + 4, -Math.PI / 2 - 2.0, -Math.PI / 2 - 0.5, false);
+        g.strokePath();
+      }
+    }
+
+    drawArm(arms[0], 0);
+    drawLeg(legs[0], 0);
 
     // metronome pendulum: extreme position exactly on every beat
     const ang = Math.cos(Math.PI * beat) * 0.55;
@@ -379,14 +547,23 @@ export class Player {
     k.line(0, bodyY + 24, px, py, 3);
     k.circle(px, py, 6.5, BRASS, 3);
 
-    // crown + bow
-    k.rrect(-6, bodyY - 42, 12, 10, 3, BRASS, 3);
-    g.lineStyle(4, INK, 1);
-    g.strokeCircle(0, bodyY - 48, 7);
+    // the body, the face and everything on it go on their own layer
+    k.g = this.gFace;
+    g = this.gFace;
+    if (skin) {
+      // the hand-drawn case (its blank dial centred on the body) and the crown on its knob
+      skin.body.setPosition(0, bodyY);
+      skin.crown.setPosition(0, bodyY - 37).setRotation(Math.sin(ph) * 0.06);
+    } else {
+      // crown + bow
+      k.rrect(-6, bodyY - 42, 12, 10, 3, BRASS, 3);
+      g.lineStyle(4, INK, 1);
+      g.strokeCircle(0, bodyY - 48, 7);
 
-    // case + dial
-    k.circle(0, bodyY, 32, CASE, 4);
-    k.circle(0, bodyY, 25, PAPER, 3);
+      // case + dial
+      k.circle(0, bodyY, 32, CASE, 4);
+      k.circle(0, bodyY, 25, PAPER, 3);
+    }
     g.fillStyle(INK, 1);
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * Math.PI * 2;
@@ -405,8 +582,9 @@ export class Player {
       }
     } else {
       const pop = this.startleT > 0 ? 1.35 : 1;
-      k.pieEye(-7, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, this.act.blinking && pop === 1);
-      k.pieEye(8, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, this.act.blinking && pop === 1);
+      const shut = (this.act.blinking && pop === 1) || tk > 0.6;
+      k.pieEye(-7, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, shut);
+      k.pieEye(8, eyeY, 4.5 * pop, 7.5 * pop, lookX, air ? -0.5 : 0, shut);
     }
     // clock hands as a little moustache that spins with time
     const minute = time * 1.2;
@@ -436,11 +614,13 @@ export class Player {
       }
     }
 
-    drawLeg(legs[1]);
-    drawArm(arms[1]);
+    k.g = this.gFront;
+    drawLeg(legs[1], 1);
+    drawArm(arms[1], 1);
+    k.g = this.gBack;
   }
 
   destroy(): void {
-    this.gfx.destroy();
+    this.gfx.destroy(); // the container takes its layers and pictures with it
   }
 }

@@ -5,9 +5,10 @@ import { loadCalibration } from '../core/Calibration';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Game } from '../core/Game';
 import { checkLevel, formatIssue } from '../core/levelCheck';
-import { DataError, validateControls, validateDifficulties, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../core/validate';
+import { DataError, validateControls, validateDifficulties, validateDuel, validateGameConfig, validateLevel, validatePlatformLevel, validateStory } from '../core/validate';
 import { FilmPipeline } from '../fx/FilmPipeline';
 import { generateTextures } from '../fx/Textures';
+import { loadArtTextures } from '../fx/artTextures';
 import type { ArtManifest } from '../core/types';
 
 export class BootScene extends Phaser.Scene {
@@ -56,7 +57,16 @@ export class BootScene extends Phaser.Scene {
         Game.platformLevels[id] = validatePlatformLevel(await fetchJson(file), file);
       }
       for (const ch of Game.story.chapters) {
-        if (!Game.levels[ch.feature]) throw new DataError('data/story.json', [`chapter "${ch.id}": feature "${ch.feature}" is not in game.json "levels"`]);
+        if (Game.levels[ch.feature]) continue;
+        // not a chase: a duel (its own file, data/levels/<id>.json with "type": "duel")
+        const file = `data/levels/${ch.feature}.json`;
+        let raw: unknown = null;
+        try {
+          raw = await fetchJson(file);
+        } catch {
+          throw new DataError('data/story.json', [`chapter "${ch.id}": feature "${ch.feature}" is not in game.json "levels" and there is no ${file}`]);
+        }
+        Game.duels[ch.feature] = validateDuel(raw, file);
       }
     } catch (err) {
       if (err instanceof DataError) {
@@ -72,9 +82,25 @@ export class BootScene extends Phaser.Scene {
       new Promise((r) => setTimeout(r, 2500)),
     ]);
     generateTextures(this);
+    // hand-drawn scenery and objects (npm run art) replace the code-drawn ones of the same name
+    if (new URLSearchParams(window.location.search).get('art') !== '0') await loadArtTextures(this);
     await this.loadArt();
 
     const params = new URLSearchParams(window.location.search);
+    const duel = params.get('duel');
+    if (duel) {
+      Game.returnTo = 'test';
+      this.scene.start('Duel', { levelId: duel });
+      return;
+    }
+    if (params.get('stage') === 'pirouette') {
+      this.scene.start('MusicBox');
+      return;
+    }
+    if (params.get('puppet') !== null) {
+      this.scene.start('PuppetViewer', { id: params.get('puppet') ?? undefined });
+      return;
+    }
     this.scene.start('Splash', { skipTo: params.get('level') ?? undefined });
   }
 
@@ -82,7 +108,15 @@ export class BootScene extends Phaser.Scene {
   private async loadArt(): Promise<void> {
     const params = new URLSearchParams(window.location.search);
     if (params.get('art') === '0' || (Game.config.bossArt === false && params.get('art') !== '1')) return;
-    const bosses = [...new Set(Object.values(Game.levels).map((l) => l.boss))];
+    // every boss with a level, plus every character built with `npm run art` (for the puppet viewer)
+    let built: string[] = [];
+    try {
+      const res = await fetch(`art/index.json?v=${Date.now()}`);
+      if (res.ok) built = ((await res.json()) as { characters?: string[] }).characters ?? [];
+    } catch {
+      // no characters built yet
+    }
+    const bosses = [...new Set([...Object.values(Game.levels).map((l) => l.boss), ...built])];
     for (const boss of bosses) {
       try {
         const res = await fetch(`art/${boss}/manifest.json?v=${Date.now()}`);

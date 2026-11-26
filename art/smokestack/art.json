@@ -1,24 +1,20 @@
 {
-  "comment": "Old Smokestack as a puppet: one sheet of parts (made with an image AI). `npm run art -- smokestack` cuts it into public/art/smokestack/. Anchors are in sheet pixels.",
+  "comment": "Old Smokestack as a puppet: one sheet of parts made with an image AI (see PROMPT.txt). `npm run art -- smokestack` cuts it into public/art/smokestack/ and finds the face, wheels, smokestack, ground and nose by itself (check art/smokestack/preview.png). Any anchor can be forced here in sheet pixels. `flip` mirrors parts: we see the train's left side, so the near hand is a LEFT hand seen from the palm: all three gloves need the thumb on the RIGHT (here the fist and the pointing one came out with it on the left).",
   "type": "parts",
   "sheet": "parts.jpg",
   "scale": 2,
-  "parts": {
-    "body": [380, 260],
-    "hat": [772, 130],
-    "mustache": [830, 330],
-    "gloveOpen": [255, 560],
-    "gloveFist": [485, 560],
-    "glovePoint": [700, 560],
-    "wheel": [952, 560]
-  },
-  "anchors": {
-    "face": [576, 243, 41, 64],
-    "wheels": [[182, 358, 59], [310, 360, 59], [434, 360, 59]],
-    "frontWheel": [527, 387, 28],
-    "chimney": [527, 104, 187],
-    "shoulders": [[500, 285], [330, 240]],
-    "ground": 423,
-    "noseX": 669
-  }
+  "facing": "right",
+  "parts": [
+    "body",
+    "hat",
+    "mustache",
+    "gloveOpen",
+    "gloveFist",
+    "glovePoint",
+    "wheel"
+  ],
+  "flip": [
+    "gloveFist",
+    "glovePoint"
+  ]
 }

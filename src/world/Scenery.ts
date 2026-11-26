@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { boilKey } from '../fx/Textures';
+import { Ink } from '../rig/Ink';
 import { PROP_INFO } from './SceneryArt';
 import {
   DEFAULT_SCENERY,
@@ -60,14 +61,22 @@ interface PropLayer {
 
 interface TunnelArt {
   span: TunnelSpan;
+  /** world x of the two mouths (the bore runs between them) */
+  e: number;
+  x: number;
   walls: { img: Phaser.GameObjects.Image; wx: number; cropW: number }[];
   beams: { img: Phaser.GameObjects.Image; wx: number }[];
   lamps: { img: Phaser.GameObjects.Image; wx: number }[];
-  enter: Phaser.GameObjects.Image;
-  exit: Phaser.GameObjects.Image;
+  /** the mountain, in front of the train: rock texture cut to its outline, then the ink */
+  rock: Phaser.GameObjects.TileSprite;
+  mask: Phaser.GameObjects.Graphics;
+  ink: Ink;
 }
 
 const W = 1280;
+/** How tall a tunnel's bore is (the train's smokestack goes up into the rock) and how round its mouths are. */
+const TUNNEL_H = 330;
+const ARCH_R = 120;
 const DISSOLVE_BEATS = 8;
 /** What things look like at full night: the far hills become silhouettes. */
 const NIGHT_TINT = { far: 0x55555f, mid: 0x6a6a76, props: 0x8e8e9c };
@@ -137,26 +146,56 @@ export class Scenery {
     return out;
   }
 
+  /**
+   * A real tunnel, seen from the side like a cartoon cross-section: the mountain stands in
+   * front of the train (so its smokestack disappears into the rock as it goes in), the bore is
+   * cut out of it at track height, lined with stone at both mouths, and inside you see the far
+   * wall (brick), the timber frames and the lanterns hanging from the rock ceiling.
+   */
   private buildTunnel(span: TunnelSpan): TunnelArt {
     const s = this.scene;
     const gy = this.groundY;
-    const left = span.x1 - 150; // the entrance opening
-    const right = span.x2 + 150;
+    const top = gy - TUNNEL_H;
+    const e = span.x1 - 30;
+    const x = span.x2 + 30;
     const walls: TunnelArt['walls'] = [];
-    for (let wx = left; wx < right; wx += 512) {
-      const img = s.add.image(0, 0, 'tunnelwall_0').setOrigin(0, 0).setDepth(10);
-      walls.push({ img, wx, cropW: Math.min(512, right - wx) });
+    for (let wx = e; wx < x; wx += 512) {
+      const img = s.add.image(0, top, 'tunnelwall_0').setOrigin(0, 0).setDepth(10);
+      walls.push({ img, wx, cropW: Math.min(512, x - wx) });
     }
     const beams: TunnelArt['beams'] = [];
     const lamps: TunnelArt['lamps'] = [];
     let i = 0;
-    for (let wx = span.x1 + 260; wx < span.x2 - 160; wx += 470) {
-      beams.push({ img: s.add.image(0, 0, 'beam_0').setOrigin(0.5, 0).setDepth(11), wx });
-      if (i++ % 2 === 0) lamps.push({ img: s.add.image(0, 70, 'lantern_0').setOrigin(0.5, 0).setDepth(11), wx: wx + 235 });
+    for (let wx = e + 300; wx < x - 200; wx += 470) {
+      const b = s.add.image(0, top, 'beam_0').setOrigin(0.5, 0).setDepth(11);
+      b.setScale(TUNNEL_H / b.height);
+      beams.push({ img: b, wx });
+      if (i++ % 2 === 0) lamps.push({ img: s.add.image(0, top + 4, 'lantern_0').setOrigin(0.5, 0).setDepth(11).setScale(0.8), wx: wx + 235 });
     }
-    const enter = s.add.image(0, gy, 'portal_0').setOrigin(0, 1).setDepth(12);
-    const exit = s.add.image(0, gy, 'portal_0').setOrigin(0, 1).setDepth(12).setFlipX(true);
-    return { span, walls, beams, lamps, enter, exit };
+    // inside a mountain there is no daylight: the far wall and the timbers are in deep shadow
+    for (const w of walls) w.img.setTint(0x4c4c4c);
+    for (const b of beams) b.img.setTint(0x6e6e6e);
+    // the rock: the hand-drawn texture if there is one, else a plain stony grey
+    let key = 'art:tex:rocktile';
+    if (!s.textures.exists(key)) {
+      key = 'rockfill';
+      if (!s.textures.exists(key)) {
+        const g = s.make.graphics({}, false);
+        g.fillStyle(0x6f6a62, 1).fillRect(0, 0, 256, 256);
+        for (let n = 0; n < 40; n++) {
+          g.fillStyle(n % 2 ? 0x5d5850 : 0x837d74, 1);
+          g.fillEllipse(hash(n, 31) * 256, hash(n, 32) * 256, 20 + hash(n, 33) * 50, 14 + hash(n, 34) * 30);
+        }
+        g.generateTexture(key, 256, 256);
+        g.destroy();
+      }
+    }
+    const rock = s.add.tileSprite(0, 0, W, 720, key).setOrigin(0, 0).setDepth(41).setTint(0xa8a29a).setVisible(false);
+    const mask = s.make.graphics({}, false);
+    rock.setMask(mask.createGeometryMask());
+    const ink = new Ink(s.add.graphics().setDepth(41.2));
+    ink.amp = 0.9;
+    return { span, e, x, walls, beams, lamps, rock, mask, ink };
   }
 
   /** How much stage i has faded in at this beat (0-1). */
@@ -252,20 +291,89 @@ export class Scenery {
     }
   }
 
+  /** The mountain's outline (world x), with the bore cut out of its foot. */
+  private mountainOutline(t: TunnelArt): { x: number; y: number }[] {
+    const gy = this.groundY;
+    const top = gy - TUNNEL_H;
+    const R = ARCH_R;
+    const pts: { x: number; y: number }[] = [];
+    const face = (x0: number, dir: number) => {
+      // the rock face leans back as it climbs, with knobbly bits
+      const out: { x: number; y: number }[] = [];
+      for (let k = 0; k <= 8; k++) {
+        const y = top - 14 - k * ((top + 120) / 8);
+        const lean = (top - 14 - y) * 0.42;
+        const bump = (hash(Math.round(x0) + k, 41) - 0.5) * 34;
+        out.push({ x: x0 + dir * (lean + bump * (k > 0 ? 1 : 0)), y });
+      }
+      return out;
+    };
+    // up the entrance face, along the (off-screen) ridge, down the exit face
+    pts.push({ x: t.e - 34, y: gy + 40 });
+    pts.push(...face(t.e - 34, 1));
+    pts.push(...face(t.x + 34, -1).reverse());
+    pts.push({ x: t.x + 34, y: gy + 40 });
+    // back along the bore: the exit mouth, the rock ceiling with its arched corners, the entrance
+    pts.push({ x: t.x, y: gy + 40 });
+    for (let k = 0; k <= 6; k++) {
+      const a = (k / 6) * (Math.PI / 2);
+      pts.push({ x: t.x - R + Math.cos(a) * R, y: top + R - Math.sin(a) * R });
+    }
+    for (let k = 0; k <= 6; k++) {
+      const a = Math.PI / 2 + (k / 6) * (Math.PI / 2);
+      pts.push({ x: t.e + R + Math.cos(a) * R, y: top + R - Math.sin(a) * R });
+    }
+    pts.push({ x: t.e, y: gy + 40 });
+    return pts;
+  }
+
+  /** The stone lining of one mouth: a pillar of blocks up from the rails and round the arch. */
+  private mouthStones(k: Ink, mx: number, dir: number): void {
+    const gy = this.groundY;
+    const top = gy - TUNNEL_H;
+    const R = ARCH_R;
+    const T = 34; // how thick the lining is
+    const stone = 0xb7b1a6;
+    // the pillar: blocks from the rails up to where the arch starts
+    let y = gy;
+    let n = 0;
+    while (y > top + R + 4) {
+      const h = Math.min(46 + hash(n, 51) * 14, y - (top + R));
+      const inset = n % 2 ? 4 : 0;
+      const x0 = dir > 0 ? mx - T + inset : mx - inset;
+      k.poly([{ x: x0, y }, { x: x0 + T - inset, y }, { x: x0 + T - inset, y: y - h }, { x: x0, y: y - h }], stone, 3);
+      y -= h;
+      n++;
+    }
+    // the arch: wedge-shaped voussoirs round the corner, a keystone where it meets the ceiling
+    const cx = mx + dir * R;
+    const cy = top + R;
+    const steps = 5;
+    for (let s = 0; s < steps; s++) {
+      const a0 = Math.PI + (s / steps) * (Math.PI / 2);
+      const a1 = Math.PI + ((s + 1) / steps) * (Math.PI / 2);
+      // round the corner between the pillar and the ceiling (mirrored at the exit)
+      const q = (a: number, r: number) => ({ x: cx + dir * Math.cos(a) * r, y: cy + Math.sin(a) * r });
+      k.poly([q(a0, R), q(a1, R), q(a1, R + T + (s === steps - 1 ? 8 : 0)), q(a0, R + T)], s === steps - 1 ? 0xc9c3b7 : stone, 3);
+    }
+  }
+
   private updateTunnel(t: TunnelArt, camX: number, time: number, pulse: number, side: number): void {
     const on = (x: number, w: number) => x + w > -40 && x < W + 40;
     const boil = Math.floor(time * 8) % 3;
+    const h = TUNNEL_H;
+    const seen = on(t.e - 400 - camX, t.x - t.e + 800);
     for (const w of t.walls) {
       const x = w.wx - camX;
       const vis = on(x, 512);
       w.img.setVisible(vis);
       if (!vis) continue;
       w.img.setTexture(`tunnelwall_${boil}`).setX(x);
-      w.img.setCrop(0, 0, w.cropW, 600);
+      w.img.setCrop(0, 0, w.cropW, h);
     }
     for (const b of t.beams) {
       const x = b.wx - camX;
-      b.img.setVisible(on(x - 80, 160));
+      b.img.setVisible(on(x - 120, 240));
       b.img.setTexture(`beam_${boil}`).setX(x);
     }
     t.lamps.forEach((l, i) => {
@@ -275,9 +383,27 @@ export class Scenery {
       // swaying on its chain with the beat
       l.img.setRotation(((i % 2 === 0 ? side : -side) * 0.12) * (0.4 + pulse * 0.6));
     });
-    const ex = t.span.x1 - 320 - camX;
-    t.enter.setVisible(on(ex, 520)).setX(ex).setTexture(`portal_${boil}`);
-    const xx = t.span.x2 - 200 - camX;
-    t.exit.setVisible(on(xx, 520)).setX(xx).setTexture(`portal_${boil}`);
+    // the mountain in front: the rock texture scrolls with the world, cut to the outline
+    t.rock.setVisible(seen);
+    t.mask.clear();
+    t.ink.g.clear();
+    if (!seen) return;
+    t.rock.tilePositionX = camX * (1 / t.rock.tileScaleX);
+    const pts = this.mountainOutline(t).map((p) => ({ x: p.x - camX, y: p.y }));
+    t.mask.fillStyle(0xffffff, 1);
+    t.mask.fillPoints(pts, true);
+    // the ink: the mountain's edge (faces and the bore's ceiling), then the stone mouths
+    const k = t.ink;
+    k.seed = boil;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      if (a.y > this.groundY + 1 && b.y > this.groundY + 1) continue; // under the rails
+      if (Math.max(a.x, b.x) < -60 || Math.min(a.x, b.x) > W + 60) continue;
+      k.line(a.x, Math.min(a.y, this.groundY), b.x, Math.min(b.y, this.groundY), 5);
+    }
+    if (on(t.e - camX - 200, 400)) this.mouthStones(k, t.e - camX, 1);
+    if (on(t.x - camX - 200, 400)) this.mouthStones(k, t.x - camX, -1);
   }
+
 }

@@ -1,0 +1,14 @@
+Character parts sheet for a 2D game puppet, original cartoon character, authentic 1930s rubber hose animation style: thick black ink outlines, flat grey tones, black and white, no gradients, simple bold shapes with few details so it is easy to animate.
+
+The character is a mean old steam locomotive villain, seen from the side in three-quarter view, facing right. Long horizontal cylindrical black boiler, a driver's cab with one window at the back (left end), a short bare smokestack on top near the front, a cowcatcher under the front, three big spoked driving wheels joined by a connecting rod plus one small front wheel. At the front (right end) there is a big round light-grey plate where the face will go.
+
+Draw these parts separately on the same sheet, in this order (left to right, top to bottom), each one alone with lots of empty white space around it, nothing touching, all at the same scale:
+1. the locomotive body: NO arms, NO hat, and the round front plate completely blank and empty (no eyes, no eyebrows, no nose, no mustache, no mouth)
+2. a tall black top hat that sits on the smokestack
+3. a big bushy walrus mustache
+4. a white four-finger cartoon glove, open hand
+5. the same glove as a clenched fist
+6. the same glove pointing up with the index finger
+7. one large spoked wheel seen straight from the side
+
+Plain pure white background, no shadows, no text, no labels. Highest resolution.

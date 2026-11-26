@@ -69,8 +69,6 @@ export class Ink {
       for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
       g.closePath();
       g.strokePath();
-      g.fillStyle(outlineColor, alpha);
-      for (const p of pts) g.fillCircle(p.x, p.y, outline / 2);
     }
   }
 
@@ -106,25 +104,32 @@ export class Ink {
     this.shape(pts, fill, outline, outlineColor, alpha);
   }
 
-  /** Thick stroke following a quadratic curve, built from stamped circles (perfect round "hose"). */
+  /** Thick stroke following a quadratic curve (a perfect round "hose"): one stroked polyline
+   *  with round caps, ink rim under the colour. (It used to stamp a circle every few pixels:
+   *  hundreds of shapes a limb, re-drawn every frame, which brought the game to a crawl.) */
   hose(x1: number, y1: number, cx: number, cy: number, x2: number, y2: number, width: number, color = INK, outline = 0): void {
     const g = this.g;
     const a = this.j(x1, y1);
     const b = this.j(x2, y2);
     const len = Math.hypot(x2 - x1, y2 - y1) + Math.hypot(cx - x1, cy - y1);
-    const n = Math.max(8, Math.ceil(len / (width * 0.35)));
+    const n = Math.max(6, Math.min(24, Math.ceil(len / 9)));
     const pts: Pt[] = [];
     for (let i = 0; i <= n; i++) {
       const t = i / n;
       const it = 1 - t;
       pts.push(this.w({ x: it * it * a.x + 2 * it * t * cx + t * t * b.x, y: it * it * a.y + 2 * it * t * cy + t * t * b.y }));
     }
-    if (outline > 0) {
-      g.fillStyle(INK, 1);
-      for (const p of pts) g.fillCircle(p.x, p.y, width / 2 + outline);
-    }
-    g.fillStyle(color, 1);
-    for (const p of pts) g.fillCircle(p.x, p.y, width / 2);
+    const first = pts[0];
+    const last = pts[pts.length - 1];
+    const stroke = (w: number, c: number): void => {
+      g.lineStyle(w, c, 1);
+      g.strokePoints(pts as Phaser.Types.Math.Vector2Like[], false, false);
+      g.fillStyle(c, 1);
+      g.fillCircle(first.x, first.y, w / 2);
+      g.fillCircle(last.x, last.y, w / 2);
+    };
+    if (outline > 0) stroke(width + outline * 2, INK);
+    stroke(width, color);
   }
 
   line(x1: number, y1: number, x2: number, y2: number, w = 3, color = INK): void {

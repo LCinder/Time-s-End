@@ -12,7 +12,11 @@ import { MinigameScene } from './scenes/MinigameScene';
 import { OptionsScene, ProgrammeScene, ResumeScene, SlotScene } from './scenes/MenuScenes';
 import { SplashScene } from './scenes/SplashScene';
 import { TitleCardScene } from './scenes/TitleCardScene';
+import { DuelScene } from './scenes/DuelScene';
+import { MusicBoxScene } from './scenes/MusicBoxScene';
+import { TestScene } from './scenes/TestScene';
 import { TitleScene } from './scenes/TitleScene';
+import { PuppetViewerScene } from './scenes/PuppetViewerScene';
 
 patchMeshRenderer();
 
@@ -26,7 +30,7 @@ const game = new Phaser.Game({
   audio: { noAudio: true },
   input: { gamepad: true },
   pipeline: { FilmPipeline } as unknown as Phaser.Types.Core.PipelineConfig,
-  scene: [BootScene, ErrorScene, SplashScene, TitleScene, TitleCardScene, ChaseScene, CalibrateScene, PlatformScene, BijouScene, IntertitleScene, MinigameScene, OptionsScene, ProgrammeScene, ResumeScene, SlotScene],
+  scene: [BootScene, ErrorScene, SplashScene, TitleScene, TitleCardScene, ChaseScene, CalibrateScene, PlatformScene, BijouScene, IntertitleScene, MinigameScene, OptionsScene, ProgrammeScene, ResumeScene, SlotScene, PuppetViewerScene, TestScene, MusicBoxScene, DuelScene],
 });
 
 // handy for debugging from the console

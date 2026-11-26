@@ -68,7 +68,7 @@ export class ResumeScene extends MenuScene {
   }
 
   create(): void {
-    const L = Game.levels[this.d.levelId] ?? Game.platformLevels[this.d.levelId];
+    const L = Game.levelInfo(this.d.levelId)!;
     this.frame('WELCOME BACK', `You left in the middle of "${L.title}".`);
     this.menu = new Menu(this, [
       { label: this.d.cue > 0 ? 'RESUME FROM THE CUE MARK' : 'RESUME', select: () => this.leaveTo(() => startLevel(this, this.d.levelId, 'hub', this.d.cue)) },
@@ -194,7 +194,7 @@ export class ProgrammeScene extends MenuScene {
         const kind = { newsreel: 'NEWSREEL', serial: 'SERIAL', singalong: 'SING-ALONG', memory: 'MEMORY' }[P.kind];
         entries.push({ kind, id, title: P.kind === 'serial' ? `${P.title}, ${P.subtitle.split(':')[0]}` : P.kind === 'memory' ? P.subtitle : P.title });
       }
-      entries.push({ kind: 'THE FEATURE', id: ch.feature, title: Game.levels[ch.feature].title });
+      entries.push({ kind: 'THE FEATURE', id: ch.feature, title: Game.levelInfo(ch.feature)?.title ?? ch.nowShowing });
     }
     const unlocked = (id: string): boolean => !!s && (!!s.levels[id] || s.flags.threaded.includes(id) || s.freed.includes(id));
     const framesOf = (id: string): string => {
